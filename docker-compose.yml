@@ -34,6 +34,8 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+      args:
+        BUNDLE_WITHOUT: ""
     restart: unless-stopped
     environment:
       RAILS_ENV: development
@@ -89,6 +91,8 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+      args:
+        BUNDLE_WITHOUT: ""
     restart: unless-stopped
     environment:
       RAILS_ENV: development
