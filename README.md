@@ -20,6 +20,27 @@ Each service has its own setup guide. Run the API first, then the web app pointe
 1. **API** — see [`api/README.md`](api/README.md). Rails app; needs Ruby (see `api/.ruby-version`), PostgreSQL, and Redis. It serves on `http://localhost:3001`.
 2. **Web** — see [`web/README.md`](web/README.md). Vite app; `npm install`, copy `.env.example` to `.env`, point `VITE_API_BASE_URL` at the API, then `npm run dev`. It serves on `http://localhost:5173`.
 
+## Running everything with Docker Compose
+
+Docker Compose starts the API, frontend, Sidekiq worker, Redis, and PostgreSQL:
+
+```bash
+cp .env.example .env
+# Add GEMINI_API_KEY to .env for interview/AI features.
+docker compose up --build
+```
+
+The services are available at:
+
+| Service | URL / port |
+|---|---|
+| Web | http://localhost:5173 |
+| API | http://localhost:3001 |
+| PostgreSQL | localhost:5433 |
+| Redis | localhost:6379 |
+
+PostgreSQL is exposed on host port **5433** and remains on port 5432 inside the Compose network. The API automatically runs `rails db:prepare` when it starts. Stop the stack with `docker compose down`; add `-v` only when you want to remove the database and Redis volumes.
+
 ## Notes for the case study
 
 - This is the codebase you assess, harden, and release. Treat it as a version about to ship to a client.
