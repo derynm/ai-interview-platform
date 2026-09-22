@@ -11,12 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /ai-interview
 
 COPY Gemfile Gemfile.lock ./
-RUN bundle config set --local without 'development test' && \
-    bundle install --deployment --frozen --jobs 4
+ARG BUNDLE_WITHOUT="development test"
+RUN bundle config set --local deployment true && \
+    bundle config set --local frozen true && \
+    if [ -n "$BUNDLE_WITHOUT" ]; then bundle config set --local without "$BUNDLE_WITHOUT"; fi && \
+    bundle install --jobs 4
 
 COPY . .
-
-# ============================================================================
 
 FROM ruby:3.3.2
 
