@@ -42,16 +42,19 @@ The app will be available at **http://localhost:5173**.
 
 ## Available Scripts
 
-| Command                | Description                          |
-| ---------------------- | ------------------------------------ |
-| `npm run dev`          | Start Vite dev server with HMR       |
-| `npm run build`        | Type-check with `tsc` then build     |
-| `npm run lint`         | Check JavaScript and TypeScript      |
-| `npm run lint:fix`     | Apply safe ESLint fixes              |
-| `npm run format`       | Format supported files with Prettier |
-| `npm run format:check` | Check formatting without changes     |
-| `npm run check`        | Run lint, format check, and build    |
-| `npm run preview`      | Preview the production build locally |
+| Command                 | Description                          |
+| ----------------------- | ------------------------------------ |
+| `npm run dev`           | Start Vite dev server with HMR       |
+| `npm run build`         | Type-check with `tsc` then build     |
+| `npm run lint`          | Check JavaScript and TypeScript      |
+| `npm run lint:fix`      | Apply safe ESLint fixes              |
+| `npm run format`        | Format supported files with Prettier |
+| `npm run format:check`  | Check formatting without changes     |
+| `npm run test`          | Run Vitest once                      |
+| `npm run test:watch`    | Run Vitest in watch mode             |
+| `npm run test:coverage` | Run tests with V8 coverage           |
+| `npm run check`         | Run lint, format, tests, and build   |
+| `npm run preview`       | Preview the production build locally |
 
 From the repository root, run the complete check with `docker compose run --rm --no-deps web npm run check`.
 
