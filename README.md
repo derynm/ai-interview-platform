@@ -41,6 +41,19 @@ The services are available at:
 
 PostgreSQL is exposed on host port **5433** and remains on port 5432 inside the Compose network. The API automatically runs `rails db:prepare` when it starts. Stop the stack with `docker compose down`; add `-v` only when you want to remove the database and Redis volumes.
 
+## Code quality
+
+Run all quality checks through Docker from the repository root:
+
+```bash
+docker compose run --rm --no-deps web npm run check
+docker compose run --rm -e RAILS_ENV=test api bundle exec rails db:prepare
+docker compose run --rm -e RAILS_ENV=test api bundle exec rspec
+docker compose run --rm --no-deps api bundle exec rubocop
+```
+
+The frontend check runs ESLint, Prettier verification, Vitest, TypeScript checking, and the production build. The Rails suite uses the Compose PostgreSQL service and a separate `rakamin_test` database. RuboCop applies Ruby, Rails, and RSpec rules. Existing backend debt is tracked in `api/.rubocop_todo.yml` and should be reduced as affected files are improved.
+
 ## Notes for the case study
 
 - This is the codebase you assess, harden, and release. Treat it as a version about to ship to a client.

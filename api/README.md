@@ -73,6 +73,25 @@ bundle exec rails server
 
 Runs on **port 3001** by default.
 
+## Testing
+
+From the repository root, prepare the isolated test database and run RSpec through Docker:
+
+```bash
+docker compose run --rm -e RAILS_ENV=test api bundle exec rails db:prepare
+docker compose run --rm -e RAILS_ENV=test api bundle exec rspec
+```
+
+Run one file by appending its path, for example `bundle exec rspec spec/models/assessment_spec.rb`.
+
+## Code quality
+
+From the repository root, run the Rails, Rails-specific, and RSpec lint rules inside Docker:
+
+```bash
+docker compose exec api bundle exec rubocop
+```
+
 ---
 
 ## 7. Start the frontend
