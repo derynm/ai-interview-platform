@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import LevelRadio from "@/components/assessment/LevelRadio";
 import SkillPicker from "@/components/assessment/SkillPicker";
 import { vacanciesApi } from "@/services/vacancies";
+import { getApiErrorMessage } from "@/lib/apiError";
 import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
 import type { VacancySkill } from "@/types";
 
@@ -25,8 +26,13 @@ export default function VacancyNewPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<VacancyFormValues>({
-    defaultValues: { role_title: "", culture_dimensions: "", competency_expectations: "", skills: [] },
+  const { register, handleSubmit, control, setValue, watch } = useForm<VacancyFormValues>({
+    defaultValues: {
+      role_title: "",
+      culture_dimensions: "",
+      competency_expectations: "",
+      skills: [],
+    },
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: "skills" });
@@ -42,8 +48,8 @@ export default function VacancyNewPage() {
         vacancy_skills_attributes: data.skills,
       });
       navigate("/vacancies");
-    } catch (e: any) {
-      setError(e?.response?.data?.errors?.[0]?.message ?? "Failed to save vacancy.");
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, "Failed to save vacancy."));
     } finally {
       setSubmitting(false);
     }
@@ -62,8 +68,14 @@ export default function VacancyNewPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="space-y-1.5">
-          <Label htmlFor="role_title">Role title <span className="text-destructive">*</span></Label>
-          <Input id="role_title" placeholder="Senior Frontend Engineer" {...register("role_title", { required: true })} />
+          <Label htmlFor="role_title">
+            Role title <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="role_title"
+            placeholder="Senior Frontend Engineer"
+            {...register("role_title", { required: true })}
+          />
         </div>
 
         <Separator />
@@ -81,8 +93,14 @@ export default function VacancyNewPage() {
               {fields.map((field, index) => (
                 <div key={field.id} className="border rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{watch(`skills.${index}.skill_label`)}</span>
-                    <button type="button" onClick={() => remove(index)} className="text-muted-foreground hover:text-destructive">
+                    <span className="text-sm font-medium">
+                      {watch(`skills.${index}.skill_label`)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => remove(index)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -116,7 +134,9 @@ export default function VacancyNewPage() {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="competency_expectations">Competency expectations (used in AI narrative)</Label>
+          <Label htmlFor="competency_expectations">
+            Competency expectations (used in AI narrative)
+          </Label>
           <Textarea
             id="competency_expectations"
             placeholder="Strong communicator who can align cross-functional teams..."
@@ -128,7 +148,9 @@ export default function VacancyNewPage() {
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate("/vacancies")}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={() => navigate("/vacancies")}>
+            Cancel
+          </Button>
           <Button type="submit" disabled={submitting}>
             {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Save Vacancy
@@ -139,7 +161,9 @@ export default function VacancyNewPage() {
       <SkillPicker
         open={pickerOpen}
         onOpenChange={setPickerOpen}
-        onSelect={(s) => append({ skill_id: s.skill_id, skill_label: s.skill_label, expected_level: 3 })}
+        onSelect={(s) =>
+          append({ skill_id: s.skill_id, skill_label: s.skill_label, expected_level: 3 })
+        }
       />
     </div>
   );

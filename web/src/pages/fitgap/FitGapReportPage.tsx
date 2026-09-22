@@ -79,9 +79,10 @@ export default function FitGapReportPage() {
     try {
       const res = await portfoliosApi.exportPortfolio(portfolio.id, format, Number(vacancyId));
       const ext = format;
-      const blob = format === "pdf"
-        ? new Blob([res.data as BlobPart], { type: "application/pdf" })
-        : new Blob([JSON.stringify(res.data, null, 2)], { type: "application/json" });
+      const blob =
+        format === "pdf"
+          ? new Blob([res.data as BlobPart], { type: "application/pdf" })
+          : new Blob([JSON.stringify(res.data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -120,18 +121,45 @@ export default function FitGapReportPage() {
 
         {portfolio && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={regenerating || generating}>
-              {regenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRegenerate}
+              disabled={regenerating || generating}
+            >
+              {regenerating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              )}
               Regenerate
             </Button>
             {report && (
               <>
-                <Button variant="outline" size="sm" onClick={() => handleExport("pdf")} disabled={!!exporting}>
-                  {exporting === "pdf" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExport("pdf")}
+                  disabled={!!exporting}
+                >
+                  {exporting === "pdf" ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5 mr-1" />
+                  )}
                   PDF
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleExport("json")} disabled={!!exporting}>
-                  {exporting === "json" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExport("json")}
+                  disabled={!!exporting}
+                >
+                  {exporting === "json" ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5 mr-1" />
+                  )}
                   JSON
                 </Button>
               </>
@@ -193,9 +221,15 @@ export default function FitGapReportPage() {
                       <div key={s.id} className="text-sm flex items-center gap-2">
                         <span className="font-medium">{s.skill_label}</span>
                         <span className="text-muted-foreground">
-                          {s.ai_level} ({s.ai_confidence?.toLowerCase() === "low" ? "low confidence" : "confirmed"})
+                          {s.ai_level} (
+                          {s.ai_confidence?.toLowerCase() === "low"
+                            ? "low confidence"
+                            : "confirmed"}
+                          )
                         </span>
-                        <span className="text-xs text-muted-foreground">— Not required for this role, may be additive.</span>
+                        <span className="text-xs text-muted-foreground">
+                          — Not required for this role, may be additive.
+                        </span>
                       </div>
                     ))}
                 </CardContent>
