@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import LoadError from "@/components/LoadError";
 import { sessionsApi } from "@/services/sessions";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
 import { ArrowLeft, Download } from "lucide-react";
 import type { TranscriptTurn } from "@/types";
 
@@ -11,17 +13,29 @@ export default function TranscriptPage() {
   const [turns, setTurns] = useState<TranscriptTurn[]>([]);
   const [candidateName, setCandidateName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadTranscript = useCallback(() => {
+    setLoading(true);
+    setError(null);
     Promise.all([sessionsApi.getTranscript(Number(sessionId)), sessionsApi.get(Number(sessionId))])
       .then(([tRes, sRes]) => {
         setTurns(tRes.data.turns);
         setCandidateName(sRes.data.session.candidate_name ?? null);
       })
-      .catch(() => setError(true))
+      .catch((requestError: unknown) =>
+        setError(
+          getApiErrorStatus(requestError) === 404
+            ? "This session doesn't exist or was deleted."
+            : getApiErrorMessage(requestError, "Failed to load the transcript."),
+        ),
+      )
       .finally(() => setLoading(false));
   }, [sessionId]);
+
+  useEffect(() => {
+    loadTranscript();
+  }, [loadTranscript]);
 
   const handleDownload = () => {
     const lines = turns.map((t) => {
@@ -68,11 +82,7 @@ export default function TranscriptPage() {
         </div>
       )}
 
-      {!loading && error && (
-        <div className="border rounded-lg p-6 text-center text-sm text-destructive">
-          Failed to load transcript. Please refresh.
-        </div>
-      )}
+      {!loading && error && <LoadError message={error} onRetry={loadTranscript} />}
 
       {!loading && !error && turns.length === 0 && (
         <div className="border rounded-lg p-6 text-center text-sm text-muted-foreground">
