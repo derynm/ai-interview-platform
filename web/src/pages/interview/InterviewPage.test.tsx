@@ -19,7 +19,8 @@ vi.mock("@/hooks/useAudioPlayback", () => ({
   useAudioPlayback: () => ({
     playChunk: vi.fn(),
     stop: vi.fn(),
-    scheduleAfterPlayback: vi.fn(),
+    // Playback is instant in tests, so the candidate's turn starts right away.
+    scheduleAfterPlayback: (callback: () => void) => callback(),
     waitForDrain: vi.fn(),
     cancelDrain: vi.fn(),
   }),
@@ -278,5 +279,66 @@ describe("InterviewPage wrap-up", () => {
 
     await act(() => vi.advanceTimersByTimeAsync(60_000));
     expect(sessionsApi.audioComplete).toHaveBeenCalledTimes(5);
+  });
+});
+
+describe("InterviewPage turn-taking", () => {
+  beforeEach(() => {
+    vi.mocked(sessionsApi.getCandidateInfo).mockResolvedValue({
+      data: {
+        session_id: 3,
+        role_title: "Frontend Engineer",
+        time_limit_min: 45,
+        session_status: "active",
+        in_use_elsewhere: false,
+      },
+    } as Awaited<ReturnType<typeof sessionsApi.getCandidateInfo>>);
+  });
+
+  async function startActiveInterview() {
+    const socketOptions = renderPage();
+    await waitFor(() => expect(sessionsApi.getCandidateInfo).toHaveBeenCalled());
+    await screen.findByText("Frontend Engineer");
+    act(() => socketOptions().onStateChange("active"));
+    return socketOptions;
+  }
+
+  it("shows one voice at a time, handing the turn from the AI to the candidate", async () => {
+    const socketOptions = await startActiveInterview();
+
+    act(() => socketOptions().onSpeakerChange?.("ai"));
+    expect(screen.getAllByTestId("voice-orb")).toHaveLength(1);
+    expect(screen.getByTestId("voice-orb")).toHaveAttribute("data-mode", "ai");
+    expect(screen.getByText("AI is speaking")).toBeInTheDocument();
+    expect(screen.queryByText("Your turn — go ahead")).not.toBeInTheDocument();
+
+    act(() => socketOptions().onSpeakerChange?.("candidate"));
+    expect(screen.getAllByTestId("voice-orb")).toHaveLength(1);
+    expect(screen.getByTestId("voice-orb")).toHaveAttribute("data-mode", "candidate");
+    expect(screen.getByText("Your turn — go ahead")).toBeInTheDocument();
+    expect(screen.queryByText("AI is speaking")).not.toBeInTheDocument();
+  });
+
+  it("tells the candidate they are muted when it is their turn", async () => {
+    const socketOptions = await startActiveInterview();
+    act(() => socketOptions().onSpeakerChange?.("candidate"));
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Mute microphone" }));
+
+    expect(screen.getByText("You're muted — unmute to answer")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Unmute microphone" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("keeps the transcript visible under the orb", async () => {
+    const socketOptions = await startActiveInterview();
+
+    act(() => socketOptions().onTranscript?.({ speaker: "ai", text: "Tell me about a project." }));
+
+    expect(screen.getByRole("region", { name: "Conversation" })).toBeInTheDocument();
+    expect(screen.getByText("Tell me about a project.")).toBeInTheDocument();
   });
 });
