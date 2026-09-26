@@ -11,6 +11,8 @@ import LevelRadio from "@/components/assessment/LevelRadio";
 import SkillPicker from "@/components/assessment/SkillPicker";
 import FieldError from "@/components/FieldError";
 import LoadError from "@/components/LoadError";
+import UnsavedChangesDialog from "@/components/UnsavedChangesDialog";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { vacanciesApi } from "@/services/vacancies";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
 import { MAX_TEXT_FIELD_LENGTH, requiredText } from "@/utils/validation";
@@ -43,7 +45,7 @@ export default function VacancyEditPage() {
     getValues,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<VacancyFormValues>({
     defaultValues: {
       role_title: "",
@@ -53,6 +55,7 @@ export default function VacancyEditPage() {
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "skills" });
+  const { blocker, allowNavigation } = useUnsavedChangesGuard(isDirty);
 
   const loadVacancy = useCallback(() => {
     setLoading(true);
@@ -102,6 +105,7 @@ export default function VacancyEditPage() {
           ...removedSkillIds.map((skillId) => ({ id: skillId, _destroy: true })),
         ],
       });
+      allowNavigation();
       navigate("/vacancies");
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, "Failed to save vacancy."));
@@ -168,7 +172,9 @@ export default function VacancyEditPage() {
               </div>
               <LevelRadio
                 value={watch(`skills.${index}.expected_level`) ?? 3}
-                onChange={(v) => setValue(`skills.${index}.expected_level`, v)}
+                onChange={(v) =>
+                  setValue(`skills.${index}.expected_level`, v, { shouldDirty: true })
+                }
               />
             </div>
           ))}
@@ -199,6 +205,8 @@ export default function VacancyEditPage() {
           </Button>
         </div>
       </form>
+
+      <UnsavedChangesDialog blocker={blocker} />
 
       <SkillPicker
         open={pickerOpen}

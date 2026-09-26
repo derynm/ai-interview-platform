@@ -29,6 +29,8 @@ import { Separator } from "@/components/ui/separator";
 import SkillCard from "@/components/assessment/SkillCard";
 import SkillPicker from "@/components/assessment/SkillPicker";
 import FieldError from "@/components/FieldError";
+import UnsavedChangesDialog from "@/components/UnsavedChangesDialog";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { ArrowLeft, Plus, Loader2 } from "lucide-react";
 import { assessmentsApi } from "@/services/assessments";
 import { getApiErrorMessage } from "@/lib/apiError";
@@ -64,9 +66,10 @@ export default function AssessmentNewPage() {
     control,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = form;
   const { fields, append, remove, move } = useFieldArray({ control, name: "skills" });
+  const { blocker, allowNavigation } = useUnsavedChangesGuard(isDirty);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -113,6 +116,7 @@ export default function AssessmentNewPage() {
         })),
       };
       const res = await assessmentsApi.create(payload);
+      allowNavigation();
       navigate(`/assessments/${res.data.assessment.id}/invite`);
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, "Failed to save assessment."));
@@ -154,7 +158,10 @@ export default function AssessmentNewPage() {
           <Label>
             Session time limit <span className="text-destructive">*</span>
           </Label>
-          <Select defaultValue="45" onValueChange={(v) => setValue("time_limit_min", Number(v))}>
+          <Select
+            defaultValue="45"
+            onValueChange={(v) => setValue("time_limit_min", Number(v), { shouldDirty: true })}
+          >
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -171,7 +178,10 @@ export default function AssessmentNewPage() {
         {/* Language */}
         <div className="space-y-1.5">
           <Label>Interview language</Label>
-          <Select defaultValue="en" onValueChange={(v) => setValue("language", v as "en" | "id")}>
+          <Select
+            defaultValue="en"
+            onValueChange={(v) => setValue("language", v as "en" | "id", { shouldDirty: true })}
+          >
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -245,6 +255,8 @@ export default function AssessmentNewPage() {
           </Button>
         </div>
       </form>
+
+      <UnsavedChangesDialog blocker={blocker} />
 
       <SkillPicker
         open={pickerOpen}

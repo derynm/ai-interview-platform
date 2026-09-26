@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,14 +16,14 @@ vi.mock("@/services/skillTaxonomies", () => ({
 }));
 
 function renderPage() {
-  render(
-    <MemoryRouter initialEntries={["/vacancies/5/edit"]}>
-      <Routes>
-        <Route path="/vacancies/:id/edit" element={<VacancyEditPage />} />
-        <Route path="/vacancies" element={<p>Vacancy list</p>} />
-      </Routes>
-    </MemoryRouter>,
+  const router = createMemoryRouter(
+    [
+      { path: "/vacancies/:id/edit", element: <VacancyEditPage /> },
+      { path: "/vacancies", element: <p>Vacancy list</p> },
+    ],
+    { initialEntries: ["/vacancies/5/edit"] },
   );
+  render(<RouterProvider router={router} />);
 }
 
 describe("VacancyEditPage", () => {

@@ -31,6 +31,8 @@ import SkillCard from "@/components/assessment/SkillCard";
 import SkillPicker from "@/components/assessment/SkillPicker";
 import FieldError from "@/components/FieldError";
 import LoadError from "@/components/LoadError";
+import UnsavedChangesDialog from "@/components/UnsavedChangesDialog";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { ArrowLeft, Plus, Loader2 } from "lucide-react";
 import { assessmentsApi } from "@/services/assessments";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
@@ -61,9 +63,10 @@ export default function AssessmentEditPage() {
     getValues,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = form;
   const { fields, append, remove, move } = useFieldArray({ control, name: "skills" });
+  const { blocker, allowNavigation } = useUnsavedChangesGuard(isDirty);
 
   const loadAssessment = useCallback(() => {
     setLoading(true);
@@ -131,6 +134,7 @@ export default function AssessmentEditPage() {
           ...removedSkillIds.map((skillId) => ({ id: skillId, _destroy: true })),
         ],
       });
+      allowNavigation();
       navigate(`/assessments/${id}/invite`);
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, "Failed to save."));
@@ -192,7 +196,7 @@ export default function AssessmentEditPage() {
           </Label>
           <Select
             value={String(watch("time_limit_min"))}
-            onValueChange={(v) => setValue("time_limit_min", Number(v))}
+            onValueChange={(v) => setValue("time_limit_min", Number(v), { shouldDirty: true })}
           >
             <SelectTrigger className="w-40">
               <SelectValue />
@@ -211,7 +215,7 @@ export default function AssessmentEditPage() {
           <Label>Interview language</Label>
           <Select
             value={watch("language")}
-            onValueChange={(v) => setValue("language", v as "en" | "id")}
+            onValueChange={(v) => setValue("language", v as "en" | "id", { shouldDirty: true })}
           >
             <SelectTrigger className="w-40">
               <SelectValue />
@@ -294,6 +298,8 @@ export default function AssessmentEditPage() {
           </Button>
         </div>
       </form>
+
+      <UnsavedChangesDialog blocker={blocker} />
 
       <SkillPicker
         open={pickerOpen}
