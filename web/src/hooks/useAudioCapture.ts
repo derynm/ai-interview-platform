@@ -14,8 +14,9 @@ export function useAudioCapture({ onFrame, onError }: UseAudioCaptureOptions) {
   // Avoids AudioContext.suspend/resume async state issues entirely.
   const mutedRef = useRef(false);
 
-  const start = useCallback(async () => {
-    if (isCapturing) return;
+  // Resolves false when the mic or AudioWorklet cannot start (e.g. permission denied).
+  const start = useCallback(async (): Promise<boolean> => {
+    if (isCapturing) return true;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -45,10 +46,12 @@ export function useAudioCapture({ onFrame, onError }: UseAudioCaptureOptions) {
       source.connect(workletNode);
 
       setIsCapturing(true);
+      return true;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       console.error("[AudioCapture] Failed to start:", error.message);
       onError?.(error);
+      return false;
     }
   }, [isCapturing, onFrame, onError]);
 

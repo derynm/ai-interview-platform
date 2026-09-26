@@ -20,14 +20,22 @@ import { useAudioCapture } from "@/hooks/useAudioCapture";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 import { useAudioWebSocket } from "@/hooks/useAudioWebSocket";
 import { sessionsApi } from "@/services/sessions";
+import { getApiErrorStatus } from "@/lib/apiError";
 import HardwareCheck from "@/components/HardwareCheck";
 import { getInterviewClientId } from "@/utils/interviewClientId";
-import { CheckCircle, Mic, MicOff } from "lucide-react";
+import { AlertCircle, CheckCircle, Mic, MicOff } from "lucide-react";
 import type { CandidateInfo, InterviewState, InterviewSpeaker, TranscriptTurn } from "@/types";
+
+// audio_complete retries: 2s, 4s, 8s, 8s between five attempts (~22s), then give up.
+const AUDIO_COMPLETE_MAX_ATTEMPTS = 5;
+
+type LoadStatus = "loading" | "ready" | "invalid" | "error";
 
 export default function InterviewPage() {
   const { token } = useParams<{ token: string }>();
   const [candidateInfo, setCandidateInfo] = useState<CandidateInfo | null>(null);
+  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
+  const [micError, setMicError] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [interviewState, setInterviewState] = useState<InterviewState>("idle");
   const [speaker, setSpeaker] = useState<InterviewSpeaker>(null);
@@ -43,14 +51,19 @@ export default function InterviewPage() {
   const [micMuted, setMicMuted] = useState(false);
   const micMutedRef = useRef(false);
 
-  // Fetch candidate info
-  useEffect(() => {
-    if (!token) return;
+  // Fetch candidate info. A failure must never look like a finished interview.
+  const loadCandidateInfo = useCallback(() => {
+    if (!token) {
+      setLoadStatus("invalid");
+      return;
+    }
+    setLoadStatus("loading");
     sessionsApi
       .getCandidateInfo(token, clientId)
       .then((res) => {
         setCandidateInfo(res.data);
         setSessionId(res.data.session_id);
+        setLoadStatus("ready");
         if (res.data.session_status === "ended") {
           setInterviewState("complete");
         } else if (res.data.in_use_elsewhere) {
@@ -58,8 +71,14 @@ export default function InterviewPage() {
           setInterviewState("complete");
         }
       })
-      .catch(() => setInterviewState("complete"));
+      .catch((requestError: unknown) =>
+        setLoadStatus(getApiErrorStatus(requestError) === 404 ? "invalid" : "error"),
+      );
   }, [token, clientId]);
+
+  useEffect(() => {
+    loadCandidateInfo();
+  }, [loadCandidateInfo]);
 
   const muteRef = useRef<(() => void) | null>(null);
   const unmuteRef = useRef<(() => void) | null>(null);
@@ -82,16 +101,22 @@ export default function InterviewPage() {
       clearTimeout(audioCompleteSafetyTimerRef.current);
       audioCompleteSafetyTimerRef.current = null;
     }
-    // Retry until success — endpoint now always returns ended:true or an error.
+    // Retry a bounded number of times — endpoint always returns ended:true or an error.
     // ended:false is no longer a valid response; any success means the session ended.
-    const attempt = async (delay: number) => {
+    const attempt = async (attemptNumber: number, delay: number) => {
       try {
         await sessionsApi.audioComplete(token);
       } catch {
-        setTimeout(() => attempt(Math.min(delay * 2, 8000)), delay);
+        if (attemptNumber >= AUDIO_COMPLETE_MAX_ATTEMPTS) {
+          // The end could not be recorded; tell the candidate instead of waiting forever.
+          setSessionFailed(true);
+          setInterviewState("complete");
+          return;
+        }
+        setTimeout(() => attempt(attemptNumber + 1, Math.min(delay * 2, 8000)), delay);
       }
     };
-    attempt(2000);
+    attempt(1, 2000);
   }, [token, cancelDrain]);
 
   const handleStateChange = useCallback(
@@ -196,13 +221,20 @@ export default function InterviewPage() {
 
   const startInterview = useCallback(async () => {
     if (!sessionId) return;
+    setMicError(false);
     setInterviewState("connecting");
-    connect();
-    await startCapture();
+    // Open the mic before connecting so a denied permission never starts the AI session.
+    const captureStarted = await startCapture();
+    if (!captureStarted) {
+      setMicError(true);
+      setInterviewState("idle");
+      return;
+    }
     // Start muted — only unmute when backend sends speaker_changed: candidate.
     // This prevents mic audio from being sent during AI speech, since separate
     // AudioContexts for capture/playback break the browser's echo cancellation.
     muteRef.current?.();
+    connect();
   }, [sessionId, connect, startCapture]);
 
   const endInterview = useCallback(async () => {
@@ -223,6 +255,44 @@ export default function InterviewPage() {
       : connectionState === "connected"
         ? "connected"
         : "reconnecting";
+
+  // ── Invite link could not be loaded ─────────────────────────────────────
+  if (loadStatus === "invalid") {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+        <div className="text-4xl">🔗</div>
+        <h2 className="text-xl font-semibold">Interview Link Not Valid</h2>
+        <p className="text-sm text-muted-foreground">
+          This interview link is invalid or has expired.
+          <br />
+          Please check the link, or contact the interviewer for a new one.
+        </p>
+      </div>
+    );
+  }
+
+  if (loadStatus === "error") {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+        <div className="text-4xl">⚠️</div>
+        <h2 className="text-xl font-semibold">Couldn't Load Your Interview</h2>
+        <p className="text-sm text-muted-foreground">
+          Check your internet connection and try again.
+        </p>
+        <Button variant="outline" onClick={loadCandidateInfo}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  if (loadStatus === "loading") {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center text-sm text-muted-foreground animate-pulse">
+        Loading your interview...
+      </div>
+    );
+  }
 
   // ── State A: Pre-start ──────────────────────────────────────────────────
   if (interviewState === "idle") {
@@ -252,10 +322,24 @@ export default function InterviewPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
-              <CheckCircle className="h-4 w-4 shrink-0" />
-              <span>Hardware checks passed. You're ready to start.</span>
-            </div>
+            {micError ? (
+              <div
+                role="alert"
+                className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>
+                  We couldn't access your microphone. Allow microphone access for this site in your
+                  browser settings, make sure a microphone is connected, then press Start Interview
+                  again.
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+                <CheckCircle className="h-4 w-4 shrink-0" />
+                <span>Hardware checks passed. You're ready to start.</span>
+              </div>
+            )}
             <Button className="w-full" size="lg" onClick={startInterview}>
               <Mic className="h-4 w-4 mr-2" />
               Start Interview
