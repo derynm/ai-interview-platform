@@ -55,4 +55,23 @@ describe("AssessmentListPage", () => {
     expect(assessmentsApi.list).toHaveBeenLastCalledWith(2);
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
   });
+
+  it("links each assessment to its invite page and shows the latest session status", async () => {
+    vi.mocked(assessmentsApi.list).mockResolvedValueOnce(
+      listResponse(
+        [
+          { ...assessment(1), latest_session: { status: "active" } },
+          { ...assessment(2), latest_session: { status: "ended", end_reason: "error" } },
+        ],
+        1,
+        1,
+      ),
+    );
+    renderPage();
+
+    const row = (await screen.findByText("Role 1")).closest("a");
+    expect(row).toHaveAttribute("href", "/assessments/1/invite");
+    expect(screen.getByText("Live")).toBeInTheDocument();
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+  });
 });
