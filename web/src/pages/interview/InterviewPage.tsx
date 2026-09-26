@@ -21,6 +21,7 @@ import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 import { useAudioWebSocket } from "@/hooks/useAudioWebSocket";
 import { sessionsApi } from "@/services/sessions";
 import HardwareCheck from "@/components/HardwareCheck";
+import { getInterviewClientId } from "@/utils/interviewClientId";
 import { CheckCircle, Mic, MicOff } from "lucide-react";
 import type { CandidateInfo, InterviewState, InterviewSpeaker, TranscriptTurn } from "@/types";
 
@@ -35,6 +36,8 @@ export default function InterviewPage() {
   const [connectionLostLong, setConnectionLostLong] = useState(false);
   const [reconnectedPrompt, setReconnectedPrompt] = useState(false);
   const [sessionFailed, setSessionFailed] = useState(false);
+  const [inUseElsewhere, setInUseElsewhere] = useState(false);
+  const [clientId] = useState(getInterviewClientId);
   const reconnectedPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionLostTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [micMuted, setMicMuted] = useState(false);
@@ -44,14 +47,19 @@ export default function InterviewPage() {
   useEffect(() => {
     if (!token) return;
     sessionsApi
-      .getCandidateInfo(token)
+      .getCandidateInfo(token, clientId)
       .then((res) => {
         setCandidateInfo(res.data);
         setSessionId(res.data.session_id);
-        if (res.data.session_status === "ended") setInterviewState("complete");
+        if (res.data.session_status === "ended") {
+          setInterviewState("complete");
+        } else if (res.data.in_use_elsewhere) {
+          setInUseElsewhere(true);
+          setInterviewState("complete");
+        }
       })
       .catch(() => setInterviewState("complete"));
-  }, [token]);
+  }, [token, clientId]);
 
   const muteRef = useRef<(() => void) | null>(null);
   const unmuteRef = useRef<(() => void) | null>(null);
@@ -125,7 +133,11 @@ export default function InterviewPage() {
     reconnectedPromptTimerRef.current = setTimeout(() => setReconnectedPrompt(false), 10_000);
   }, []);
 
-  const handleSessionFailed = useCallback(() => setSessionFailed(true), []);
+  const handleSessionFailed = useCallback((code?: string) => {
+    // Another browser already started this interview (e.g. both clicked Start on a shared link).
+    if (code === "session_in_use") setInUseElsewhere(true);
+    else setSessionFailed(true);
+  }, []);
 
   const handleTranscript = useCallback((turn: Pick<TranscriptTurn, "speaker" | "text">) => {
     setTranscript((prev) => [...prev.slice(-9), turn]); // keep last 10
@@ -149,6 +161,7 @@ export default function InterviewPage() {
   const { connect, send, sendJson, disconnect, connectionState } = useAudioWebSocket({
     sessionId: sessionId ?? 0,
     token,
+    clientId,
     onAudioChunk: playChunk,
     onTranscript: handleTranscript,
     onStateChange: handleStateChange,
@@ -255,6 +268,21 @@ export default function InterviewPage() {
 
   // ── State F: Complete ───────────────────────────────────────────────────
   if (interviewState === "complete") {
+    if (inUseElsewhere) {
+      return (
+        <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+          <div className="text-4xl">🔒</div>
+          <h2 className="text-xl font-semibold">Interview Already in Progress</h2>
+          <p className="text-sm text-muted-foreground">
+            This interview link is already being used in another browser or on another device, and
+            only one person can take the interview.
+            <br />
+            If you are the candidate and did not start it, please contact the interviewer.
+          </p>
+        </div>
+      );
+    }
+
     if (sessionFailed) {
       return (
         <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
