@@ -29,7 +29,9 @@ function renderPage() {
 }
 
 describe("AssessmentListPage", () => {
-  beforeEach(() => vi.mocked(assessmentsApi.list).mockReset());
+  beforeEach(() => {
+    vi.mocked(assessmentsApi.list).mockReset();
+  });
 
   it("shows only the error, not the empty state, when loading fails", async () => {
     vi.mocked(assessmentsApi.list).mockRejectedValueOnce(new Error("boom"));

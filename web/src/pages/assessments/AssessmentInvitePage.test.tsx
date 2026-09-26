@@ -65,7 +65,9 @@ describe("AssessmentInvitePage", () => {
     vi.mocked(assessmentsApi.createSession).mockReset();
   });
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
   it("shows a load error instead of an empty candidate list", async () => {
     vi.mocked(assessmentsApi.get).mockRejectedValueOnce(serverError("Database unavailable"));

@@ -74,7 +74,9 @@ function renderAt(path: string) {
 }
 
 describe("AssessmentNewPage validation", () => {
-  beforeEach(() => vi.mocked(assessmentsApi.create).mockReset());
+  beforeEach(() => {
+    vi.mocked(assessmentsApi.create).mockReset();
+  });
 
   it("rejects a whitespace-only role title with a visible message", async () => {
     const user = userEvent.setup();
