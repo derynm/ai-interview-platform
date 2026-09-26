@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import InterviewPage from "@/pages/interview/InterviewPage";
 import { useAudioWebSocket } from "@/hooks/useAudioWebSocket";
 import { sessionsApi } from "@/services/sessions";
+import type { CandidateInfo } from "@/types";
 
 vi.mock("@/services/sessions", () => ({
   sessionsApi: { getCandidateInfo: vi.fn(), audioComplete: vi.fn() },
@@ -62,6 +63,7 @@ describe("InterviewPage end screen", () => {
         role_title: "Frontend Engineer",
         time_limit_min: 45,
         session_status: "active",
+        in_use_elsewhere: false,
       },
     } as Awaited<ReturnType<typeof sessionsApi.getCandidateInfo>>);
   });
@@ -86,5 +88,56 @@ describe("InterviewPage end screen", () => {
     act(() => socketOptions().onStateChange("complete"));
 
     expect(screen.getByText("Interview Complete")).toBeInTheDocument();
+  });
+});
+
+describe("InterviewPage single-browser access", () => {
+  function mockCandidateInfo(overrides: Partial<CandidateInfo>) {
+    vi.mocked(sessionsApi.getCandidateInfo).mockResolvedValue({
+      data: {
+        session_id: 3,
+        role_title: "Frontend Engineer",
+        time_limit_min: 45,
+        session_status: "pending",
+        in_use_elsewhere: false,
+        ...overrides,
+      },
+    } as Awaited<ReturnType<typeof sessionsApi.getCandidateInfo>>);
+  }
+
+  it("sends this browser's id when loading the interview", async () => {
+    mockCandidateInfo({});
+    const socketOptions = renderPage();
+
+    await waitFor(() =>
+      expect(sessionsApi.getCandidateInfo).toHaveBeenCalledWith(
+        "invite-token",
+        expect.stringMatching(/^[0-9a-f]{32}$/),
+      ),
+    );
+    const [, clientId] = vi.mocked(sessionsApi.getCandidateInfo).mock.calls[0];
+    expect(socketOptions().clientId).toBe(clientId);
+  });
+
+  it("blocks the page when another browser already started the interview", async () => {
+    mockCandidateInfo({ session_status: "active", in_use_elsewhere: true });
+    renderPage();
+
+    expect(await screen.findByText("Interview Already in Progress")).toBeInTheDocument();
+    expect(screen.queryByText("Interview Complete")).not.toBeInTheDocument();
+  });
+
+  it("blocks the page when another browser wins the start", async () => {
+    mockCandidateInfo({});
+    const socketOptions = renderPage();
+    await waitFor(() => expect(sessionsApi.getCandidateInfo).toHaveBeenCalled());
+
+    act(() => {
+      socketOptions().onSessionFailed?.("session_in_use");
+      socketOptions().onStateChange("complete");
+    });
+
+    expect(screen.getByText("Interview Already in Progress")).toBeInTheDocument();
+    expect(screen.queryByText("Interview Could Not Continue")).not.toBeInTheDocument();
   });
 });
