@@ -1,11 +1,12 @@
 import api from "./api";
 import type { Session, CoverageMap, TranscriptTurn, Portfolio, CandidateInfo } from "@/types";
 
+type SessionDetails = Session & {
+  assessment: { id: number; name: string; time_limit_min: number };
+};
+
 export const sessionsApi = {
-  get: (id: number) =>
-    api.get<{ session: Session; assessment: { id: number; name: string; time_limit_min: number } }>(
-      `/sessions/${id}`,
-    ),
+  get: (id: number) => api.get<{ session: SessionDetails }>(`/sessions/${id}`),
 
   endSession: (id: number, reason = "manual_assessor") =>
     api.post<{ session: Session }>(`/sessions/${id}/end_session`, {
