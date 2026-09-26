@@ -315,8 +315,9 @@ export default function LandingPage() {
       {/* Hero */}
       <div className="px-3 pt-3 sm:px-4 sm:pt-4">
         <section className="bg-brand-gradient relative overflow-hidden rounded-[2rem] px-4 pb-0 pt-4 sm:px-6">
-          <header className="mx-auto flex h-14 max-w-5xl items-center justify-between rounded-full border border-white/70 bg-card/60 pl-3 pr-1.5 backdrop-blur">
-            <BrandMark />
+          {/* Equal outer columns keep the section links centered whatever the brand/CTA widths */}
+          <header className="mx-auto flex h-14 max-w-5xl items-center justify-between rounded-full border border-white/70 bg-card/60 px-1.5 backdrop-blur md:grid md:grid-cols-[1fr_auto_1fr]">
+            <BrandMark className="ml-1.5 justify-self-start" />
             <nav aria-label="Page sections" className="hidden items-center gap-6 text-sm md:flex">
               {[
                 ["#how-it-works", "How it works"],
@@ -334,7 +335,7 @@ export default function LandingPage() {
             </nav>
             <Link
               to={primaryCta.to}
-              className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-card pl-4 pr-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-rakamin-light-cyan"
+              className="group inline-flex h-10 items-center gap-1.5 justify-self-end rounded-full bg-card pl-4 pr-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-rakamin-light-cyan"
             >
               {token ? "Dashboard" : "Sign in"}
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform group-hover:rotate-45 motion-reduce:transition-none">
