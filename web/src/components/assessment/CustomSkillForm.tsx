@@ -30,7 +30,7 @@ export default function CustomSkillForm({ index, form }: CustomSkillFormProps) {
   const skillErrors = errors.skills?.[index];
 
   return (
-    <div className="space-y-3 pt-1">
+    <div className="space-y-4 pt-1">
       <div className="space-y-1.5">
         <Label htmlFor={`skills.${index}.skill_label`}>
           Name <span className="text-destructive">*</span>
@@ -59,10 +59,11 @@ export default function CustomSkillForm({ index, form }: CustomSkillFormProps) {
         <FieldError message={skillErrors?.scope_include?.message} />
       </div>
 
-      <div className="space-y-2">
+      <fieldset className="space-y-3 rounded-xl bg-rakamin-light-cyan/40 p-3">
+        <legend className="sr-only">Level anchors</legend>
         {(["l1_anchor", "l2_anchor", "l3_anchor", "l4_anchor", "l5_anchor"] as const).map(
           (key, i) => (
-            <div key={key} className="space-y-1">
+            <div key={key} className="space-y-1.5">
               <Label htmlFor={`skills.${index}.${key}`}>
                 L{i + 1} anchor <span className="text-destructive">*</span>
               </Label>
@@ -80,7 +81,7 @@ export default function CustomSkillForm({ index, form }: CustomSkillFormProps) {
             </div>
           ),
         )}
-      </div>
+      </fieldset>
 
       <div className="space-y-1.5">
         <Label>Expected level</Label>

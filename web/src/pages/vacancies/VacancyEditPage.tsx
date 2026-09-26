@@ -1,22 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import LevelRadio from "@/components/assessment/LevelRadio";
 import SkillPicker from "@/components/assessment/SkillPicker";
 import FieldError from "@/components/FieldError";
 import LoadError from "@/components/LoadError";
+import EmptyState from "@/components/EmptyState";
+import FormSection from "@/components/FormSection";
+import Notice from "@/components/Notice";
+import PageHeader from "@/components/layout/PageHeader";
+import VacancySkillRow from "@/components/vacancy/VacancySkillRow";
 import UnsavedChangesDialog from "@/components/UnsavedChangesDialog";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { vacanciesApi } from "@/services/vacancies";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
 import { MAX_TEXT_FIELD_LENGTH, requiredText } from "@/utils/validation";
-import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
+import { ListChecks, Plus, Loader2 } from "lucide-react";
 import type { VacancySkill } from "@/types";
 
 interface VacancyFormValues {
@@ -116,92 +119,108 @@ export default function VacancyEditPage() {
 
   if (loading)
     return (
-      <div className="max-w-2xl mx-auto space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-full" />
+      <div className="mx-auto max-w-3xl space-y-6">
+        <Skeleton className="h-16 w-72" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-48 w-full rounded-2xl" />
       </div>
     );
 
   if (loadError)
     return (
-      <div className="max-w-2xl mx-auto space-y-4">
-        <Link to="/vacancies" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Back to vacancies
-        </Link>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader backTo="/vacancies" backLabel="Back to vacancies" title="Edit vacancy" />
         <LoadError message={loadError} onRetry={loadVacancy} />
       </div>
     );
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-2 mb-6">
-        <Link to="/vacancies" className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <span className="text-sm font-medium">Edit Vacancy</span>
-      </div>
+    <div className="mx-auto max-w-3xl space-y-8">
+      <PageHeader
+        backTo="/vacancies"
+        backLabel="Back to vacancies"
+        eyebrow="Edit vacancy"
+        title="Update the role"
+        description="Fit/gap reports compare a candidate's portfolio with these expectations."
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="space-y-1.5">
-          <Label htmlFor="role_title">
-            Role title <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="role_title"
-            maxLength={MAX_TEXT_FIELD_LENGTH}
-            aria-invalid={!!errors.role_title}
-            {...register("role_title", requiredText("Role title is required"))}
-          />
-          <FieldError message={errors.role_title?.message} />
-        </div>
-        <Separator />
-        <div className="space-y-3">
-          <Label>Expected skills</Label>
-          {fields.map((field, index) => (
-            <div key={field.id} className="border rounded-lg p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{watch(`skills.${index}.skill_label`)}</span>
-                <button
-                  type="button"
-                  onClick={() => removeSkill(index)}
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label="Remove skill"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <LevelRadio
-                value={watch(`skills.${index}.expected_level`) ?? 3}
-                onChange={(v) =>
-                  setValue(`skills.${index}.expected_level`, v, { shouldDirty: true })
-                }
-              />
+        <FormSection title="Role">
+          <div className="space-y-2">
+            <Label htmlFor="role_title">
+              Role title <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="role_title"
+              maxLength={MAX_TEXT_FIELD_LENGTH}
+              aria-invalid={!!errors.role_title}
+              {...register("role_title", requiredText("Role title is required"))}
+            />
+            <FieldError message={errors.role_title?.message} />
+          </div>
+        </FormSection>
+
+        <FormSection
+          title="Expected skills"
+          description="The levels a strong hire for this role should demonstrate."
+        >
+          {fields.length === 0 ? (
+            <EmptyState icon={ListChecks} title="No skills added yet." />
+          ) : (
+            <div className="space-y-3">
+              {fields.map((field, index) => (
+                <VacancySkillRow
+                  key={field.id}
+                  label={watch(`skills.${index}.skill_label`) ?? ""}
+                  level={watch(`skills.${index}.expected_level`) ?? 3}
+                  onLevelChange={(v) =>
+                    setValue(`skills.${index}.expected_level`, v, { shouldDirty: true })
+                  }
+                  onRemove={() => removeSkill(index)}
+                />
+              ))}
             </div>
-          ))}
+          )}
+
           <Button type="button" variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Add skill
+            <Plus /> Add skill expectation
           </Button>
-        </div>
-        <Separator />
-        <div className="space-y-1.5">
-          <Label htmlFor="culture_dimensions">Company culture</Label>
-          <Textarea id="culture_dimensions" rows={3} {...register("culture_dimensions")} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="competency_expectations">Competency expectations</Label>
-          <Textarea
-            id="competency_expectations"
-            rows={3}
-            {...register("competency_expectations")}
-          />
-        </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <div className="flex justify-end gap-2">
+        </FormSection>
+
+        <FormSection
+          title="Culture and competencies"
+          description="Used to write the narrative in fit/gap reports."
+        >
+          <div className="space-y-2">
+            <Label htmlFor="culture_dimensions">Company culture</Label>
+            <Textarea
+              id="culture_dimensions"
+              placeholder="Ownership-driven, async-first, direct feedback culture..."
+              rows={3}
+              {...register("culture_dimensions")}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="competency_expectations">Competency expectations</Label>
+            <Textarea
+              id="competency_expectations"
+              placeholder="Strong communicator who can align cross-functional teams..."
+              rows={3}
+              {...register("competency_expectations")}
+            />
+          </div>
+        </FormSection>
+
+        {error && <Notice variant="error">{error}</Notice>}
+
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={() => navigate("/vacancies")}>
             Cancel
           </Button>
           <Button type="submit" disabled={submitting}>
-            {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Save Changes
+            {submitting && <Loader2 className="animate-spin" />}
+            Save Changes
           </Button>
         </div>
       </form>
