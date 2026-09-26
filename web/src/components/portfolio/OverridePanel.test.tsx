@@ -20,7 +20,9 @@ const skill = (ai_level: number): PortfolioSkill => ({
 });
 
 describe("OverridePanel", () => {
-  beforeEach(() => vi.mocked(portfoliosApi.getOverride).mockReset());
+  beforeEach(() => {
+    vi.mocked(portfoliosApi.getOverride).mockReset();
+  });
 
   it("shows the API's reason when saving fails", async () => {
     const config = { headers: new AxiosHeaders() };
