@@ -33,8 +33,8 @@ describe("VacancyEditPage", () => {
         vacancy: {
           id: 5,
           role_title: "Frontend Engineer",
-          culture_dimensions: "",
-          competency_expectations: "",
+          culture_dimensions: "Async-first",
+          competency_expectations: "Leads projects",
           skills: [
             { id: 21, skill_label: "React", expected_level: 3 },
             { id: 22, skill_label: "Testing", expected_level: 4 },
@@ -95,6 +95,19 @@ describe("VacancyEditPage", () => {
     await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
     expect(await screen.findByText("Role title is required")).toBeInTheDocument();
+    expect(vacanciesApi.update).not.toHaveBeenCalled();
+  });
+
+  it("does not allow every expected skill to be removed", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByDisplayValue("Frontend Engineer");
+    await user.click(screen.getAllByRole("button", { name: "Remove skill" })[1]);
+    await user.click(screen.getByRole("button", { name: "Remove skill" }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(await screen.findByText("At least one skill is required")).toBeInTheDocument();
     expect(vacanciesApi.update).not.toHaveBeenCalled();
   });
 });
