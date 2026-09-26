@@ -1,5 +1,5 @@
 import api from "./api";
-import type { Portfolio, AssessorOverride, FitGapReport } from "@/types";
+import type { AssessorOverride, FitGapReport } from "@/types";
 
 export const portfoliosApi = {
   getOverride: (

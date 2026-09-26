@@ -55,46 +55,6 @@ export default function InterviewPage() {
   const muteRef = useRef<(() => void) | null>(null);
   const unmuteRef = useRef<(() => void) | null>(null);
 
-  const handleStateChange = useCallback((state: InterviewState) => {
-    setInterviewState(state);
-
-    if (state === "draining_audio") {
-      // Mute mic, stop sending — wait for audio queue to drain then call audio_complete
-      muteRef.current?.();
-      audioCompleteCalledRef.current = false;
-      // Safety timeout: call audio_complete after 10s even if drain never fires
-      audioCompleteSafetyTimerRef.current = setTimeout(() => {
-        callAudioComplete();
-      }, 10_000);
-      waitForDrain(() => callAudioComplete());
-      return;
-    }
-
-    if (state === "reconnecting") {
-      muteRef.current?.();
-      connectionLostTimerRef.current = setTimeout(() => {
-        setConnectionLostLong(true);
-      }, 60_000);
-    } else {
-      if (connectionLostTimerRef.current) {
-        clearTimeout(connectionLostTimerRef.current);
-        connectionLostTimerRef.current = null;
-      }
-      setConnectionLostLong(false);
-      if (state === "active" && !micMutedRef.current) unmuteRef.current?.();
-    }
-  }, []);
-
-  const handleReconnected = useCallback(() => {
-    if (reconnectedPromptTimerRef.current) clearTimeout(reconnectedPromptTimerRef.current);
-    setReconnectedPrompt(true);
-    reconnectedPromptTimerRef.current = setTimeout(() => setReconnectedPrompt(false), 10_000);
-  }, []);
-
-  const handleTranscript = useCallback((turn: Pick<TranscriptTurn, "speaker" | "text">) => {
-    setTranscript((prev) => [...prev.slice(-9), turn]); // keep last 10
-  }, []);
-
   const {
     playChunk,
     stop: stopPlayback,
@@ -124,6 +84,49 @@ export default function InterviewPage() {
     };
     attempt(2000);
   }, [token, cancelDrain]);
+
+  const handleStateChange = useCallback(
+    (state: InterviewState) => {
+      setInterviewState(state);
+
+      if (state === "draining_audio") {
+        // Mute mic, stop sending — wait for audio queue to drain then call audio_complete
+        muteRef.current?.();
+        audioCompleteCalledRef.current = false;
+        // Safety timeout: call audio_complete after 10s even if drain never fires
+        audioCompleteSafetyTimerRef.current = setTimeout(() => {
+          callAudioComplete();
+        }, 10_000);
+        waitForDrain(() => callAudioComplete());
+        return;
+      }
+
+      if (state === "reconnecting") {
+        muteRef.current?.();
+        connectionLostTimerRef.current = setTimeout(() => {
+          setConnectionLostLong(true);
+        }, 60_000);
+      } else {
+        if (connectionLostTimerRef.current) {
+          clearTimeout(connectionLostTimerRef.current);
+          connectionLostTimerRef.current = null;
+        }
+        setConnectionLostLong(false);
+        if (state === "active" && !micMutedRef.current) unmuteRef.current?.();
+      }
+    },
+    [callAudioComplete, waitForDrain],
+  );
+
+  const handleReconnected = useCallback(() => {
+    if (reconnectedPromptTimerRef.current) clearTimeout(reconnectedPromptTimerRef.current);
+    setReconnectedPrompt(true);
+    reconnectedPromptTimerRef.current = setTimeout(() => setReconnectedPrompt(false), 10_000);
+  }, []);
+
+  const handleTranscript = useCallback((turn: Pick<TranscriptTurn, "speaker" | "text">) => {
+    setTranscript((prev) => [...prev.slice(-9), turn]); // keep last 10
+  }, []);
 
   const handleSpeakerChange = useCallback(
     (newSpeaker: InterviewSpeaker) => {
