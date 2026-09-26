@@ -13,7 +13,7 @@ describe("ErrorBoundary", () => {
   });
 
   it("keeps content outside the boundary when a page crashes", () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     render(
       <>
@@ -26,5 +26,10 @@ describe("ErrorBoundary", () => {
 
     expect(screen.getByText("Something went wrong.")).toBeInTheDocument();
     expect(screen.getByText("Assessments")).toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith(
+      "[ErrorBoundary] Page crashed:",
+      expect.objectContaining({ message: "render failed" }),
+      expect.any(String),
+    );
   });
 });
