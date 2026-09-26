@@ -22,7 +22,9 @@ const taxonomy = (skill_id: string, skill_label: string): SkillTaxonomy => ({
 });
 
 describe("SkillPicker", () => {
-  beforeEach(() => vi.mocked(skillTaxonomiesApi.list).mockReset());
+  beforeEach(() => {
+    vi.mocked(skillTaxonomiesApi.list).mockReset();
+  });
 
   it("shows a retryable error instead of 'No skills found' when loading fails", async () => {
     vi.mocked(skillTaxonomiesApi.list)
