@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,13 +23,64 @@ import { sessionsApi } from "@/services/sessions";
 import { getApiErrorStatus } from "@/lib/apiError";
 import HardwareCheck from "@/components/HardwareCheck";
 import { getInterviewClientId } from "@/utils/interviewClientId";
-import { AlertCircle, CheckCircle, Mic, MicOff } from "lucide-react";
+import Notice from "@/components/Notice";
+import { Card } from "@/components/ui/card";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Link2Off,
+  Loader2,
+  Lock,
+  Mic,
+  MicOff,
+  RefreshCw,
+  WifiOff,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import type { CandidateInfo, InterviewState, InterviewSpeaker, TranscriptTurn } from "@/types";
 
 // audio_complete retries: 2s, 4s, 8s, 8s between five attempts (~22s), then give up.
 const AUDIO_COMPLETE_MAX_ATTEMPTS = 5;
 
 type LoadStatus = "loading" | "ready" | "invalid" | "error";
+
+const STATUS_TONES = {
+  neutral: "bg-rakamin-light-cyan text-primary",
+  success: "bg-green-50 text-green-700",
+  error: "bg-destructive/10 text-destructive",
+};
+
+// Full-page message shown before or after the interview itself.
+function StatusScreen({
+  icon: Icon,
+  tone,
+  title,
+  children,
+  action,
+}: {
+  icon: LucideIcon;
+  tone: keyof typeof STATUS_TONES;
+  title: string;
+  children: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="mx-auto w-full max-w-xl px-4 py-12 sm:py-16">
+      <Card className="flex flex-col items-center gap-4 px-6 py-10 text-center">
+        <span
+          className={`flex h-14 w-14 items-center justify-center rounded-full ${STATUS_TONES[tone]}`}
+        >
+          <Icon className="h-6 w-6" />
+        </span>
+        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+        <div className="space-y-1 text-sm text-muted-foreground">{children}</div>
+        {action}
+      </Card>
+    </div>
+  );
+}
 
 export default function InterviewPage() {
   const { token } = useParams<{ token: string }>();
@@ -259,36 +310,34 @@ export default function InterviewPage() {
   // ── Invite link could not be loaded ─────────────────────────────────────
   if (loadStatus === "invalid") {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-        <div className="text-4xl">🔗</div>
-        <h2 className="text-xl font-semibold">Interview Link Not Valid</h2>
-        <p className="text-sm text-muted-foreground">
-          This interview link is invalid or has expired.
-          <br />
-          Please check the link, or contact the interviewer for a new one.
-        </p>
-      </div>
+      <StatusScreen icon={Link2Off} tone="error" title="Interview Link Not Valid">
+        <p>This interview link is invalid or has expired.</p>
+        <p>Please check the link, or contact the interviewer for a new one.</p>
+      </StatusScreen>
     );
   }
 
   if (loadStatus === "error") {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-        <div className="text-4xl">⚠️</div>
-        <h2 className="text-xl font-semibold">Couldn't Load Your Interview</h2>
-        <p className="text-sm text-muted-foreground">
-          Check your internet connection and try again.
-        </p>
-        <Button variant="outline" onClick={loadCandidateInfo}>
-          Try again
-        </Button>
-      </div>
+      <StatusScreen
+        icon={WifiOff}
+        tone="error"
+        title="Couldn't Load Your Interview"
+        action={
+          <Button variant="outline" onClick={loadCandidateInfo}>
+            <RefreshCw /> Try again
+          </Button>
+        }
+      >
+        <p>Check your internet connection and try again.</p>
+      </StatusScreen>
     );
   }
 
   if (loadStatus === "loading") {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center text-sm text-muted-foreground animate-pulse">
+      <div className="flex flex-col items-center gap-3 px-4 py-16 text-sm text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
         Loading your interview...
       </div>
     );
@@ -297,22 +346,36 @@ export default function InterviewPage() {
   // ── State A: Pre-start ──────────────────────────────────────────────────
   if (interviewState === "idle") {
     return (
-      <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
-        <div className="text-center space-y-1">
-          <h1 className="text-xl font-semibold">{candidateInfo?.role_title ?? "AI Interview"}</h1>
+      <div className="mx-auto w-full max-w-xl space-y-6 px-4 py-8 sm:py-12">
+        <div className="space-y-3 text-center">
+          <span className="inline-flex items-center rounded-full bg-rakamin-light-cyan px-3 py-1 text-xs font-medium text-rakamin-dark-teal">
+            Voice interview
+          </span>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {candidateInfo?.role_title ?? "AI Interview"}
+          </h1>
           {candidateInfo && (
-            <p className="text-sm text-muted-foreground">{candidateInfo.time_limit_min} minutes</p>
+            <p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" /> {candidateInfo.time_limit_min} minutes
+            </p>
           )}
         </div>
 
         {!hardwareCheckDone ? (
           <div className="space-y-4">
-            <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-1.5 text-muted-foreground">
-              <p>• This is a voice interview. Make sure you're in a quiet place.</p>
-              <p>• The AI will ask follow-up questions — there are no scripts.</p>
-              <p>• The session will last up to {candidateInfo?.time_limit_min ?? "—"} minutes.</p>
-              <p>• Your mic will be active throughout. You can end anytime.</p>
-            </div>
+            <ul className="space-y-2.5 rounded-2xl border bg-card p-5 text-sm shadow-sm">
+              {[
+                "This is a voice interview. Make sure you're in a quiet place.",
+                "The AI will ask follow-up questions — there are no scripts.",
+                `The session will last up to ${candidateInfo?.time_limit_min ?? "—"} minutes.`,
+                "Your mic will be active throughout. You can end anytime.",
+              ].map((tip) => (
+                <li key={tip} className="flex items-start gap-2.5">
+                  <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-rakamin-teal" />
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
             <HardwareCheck
               onStart={() => {
                 setHardwareCheckDone(true);
@@ -323,25 +386,16 @@ export default function InterviewPage() {
         ) : (
           <div className="space-y-4">
             {micError ? (
-              <div
-                role="alert"
-                className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5"
-              >
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>
-                  We couldn't access your microphone. Allow microphone access for this site in your
-                  browser settings, make sure a microphone is connected, then press Start Interview
-                  again.
-                </span>
-              </div>
+              <Notice variant="error">
+                We couldn't access your microphone. Allow microphone access for this site in your
+                browser settings, make sure a microphone is connected, then press Start Interview
+                again.
+              </Notice>
             ) : (
-              <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
-                <CheckCircle className="h-4 w-4 shrink-0" />
-                <span>Hardware checks passed. You're ready to start.</span>
-              </div>
+              <Notice variant="success">Hardware checks passed. You're ready to start.</Notice>
             )}
             <Button className="w-full" size="lg" onClick={startInterview}>
-              <Mic className="h-4 w-4 mr-2" />
+              <Mic />
               Start Interview
             </Button>
           </div>
@@ -354,43 +408,30 @@ export default function InterviewPage() {
   if (interviewState === "complete") {
     if (inUseElsewhere) {
       return (
-        <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-          <div className="text-4xl">🔒</div>
-          <h2 className="text-xl font-semibold">Interview Already in Progress</h2>
-          <p className="text-sm text-muted-foreground">
+        <StatusScreen icon={Lock} tone="neutral" title="Interview Already in Progress">
+          <p>
             This interview link is already being used in another browser or on another device, and
             only one person can take the interview.
-            <br />
-            If you are the candidate and did not start it, please contact the interviewer.
           </p>
-        </div>
+          <p>If you are the candidate and did not start it, please contact the interviewer.</p>
+        </StatusScreen>
       );
     }
 
     if (sessionFailed) {
       return (
-        <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-          <div className="text-4xl">⚠️</div>
-          <h2 className="text-xl font-semibold">Interview Could Not Continue</h2>
-          <p className="text-sm text-muted-foreground">
-            A technical problem interrupted the interview and it couldn't be restored.
-            <br />
-            Please contact the interviewer to arrange next steps.
-          </p>
-        </div>
+        <StatusScreen icon={AlertTriangle} tone="error" title="Interview Could Not Continue">
+          <p>A technical problem interrupted the interview and it couldn't be restored.</p>
+          <p>Please contact the interviewer to arrange next steps.</p>
+        </StatusScreen>
       );
     }
 
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-        <div className="text-4xl">✅</div>
-        <h2 className="text-xl font-semibold">Interview Complete</h2>
-        <p className="text-sm text-muted-foreground">
-          Thank you. The interview has been recorded.
-          <br />
-          The hiring team will review your results and follow up with you.
-        </p>
-      </div>
+      <StatusScreen icon={CheckCircle} tone="success" title="Interview Complete">
+        <p>Thank you. The interview has been recorded.</p>
+        <p>The hiring team will review your results and follow up with you.</p>
+      </StatusScreen>
     );
   }
 
@@ -399,10 +440,10 @@ export default function InterviewPage() {
   const candidateSpeaking = speaker === "candidate";
 
   return (
-    <div className="max-w-xl mx-auto px-4 flex flex-col h-full">
+    <div className="mx-auto flex h-full w-full max-w-xl flex-col px-4">
       {/* Top bar */}
-      <div className="flex items-center justify-between py-3 border-b sticky top-12 bg-card z-10">
-        <span className="text-sm font-medium">AI Interview</span>
+      <div className="sticky top-0 z-10 mt-4 flex items-center justify-between rounded-full border bg-card/90 px-4 py-2.5 shadow-sm backdrop-blur">
+        <span className="text-sm font-medium">{candidateInfo?.role_title ?? "AI Interview"}</span>
         {candidateInfo && (
           <InterviewTimer
             totalSeconds={candidateInfo.time_limit_min * 60}
@@ -415,39 +456,43 @@ export default function InterviewPage() {
       {/* Reconnecting banner */}
       {interviewState === "reconnecting" &&
         (connectionLostLong ? (
-          <div className="flex items-center gap-2 text-sm bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-2.5 mt-2">
-            <span className="animate-pulse">●</span>
-            <span>
-              Connection is taking too long to restore. Please wait, and contact the interviewer if
-              this persists.
-            </span>
-          </div>
+          <Notice variant="error" className="mt-3">
+            Connection is taking too long to restore. Please wait, and contact the interviewer if
+            this persists.
+          </Notice>
         ) : (
-          <div className="flex items-center gap-2 text-sm bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg px-4 py-2.5 mt-2">
-            <span className="animate-pulse">●</span>
-            <span>Briefly reconnecting — please wait a moment.</span>
-          </div>
+          <Notice variant="warning" className="mt-3">
+            Briefly reconnecting — please wait a moment.
+          </Notice>
         ))}
 
       {/* Reconnected prompt */}
       {reconnectedPrompt && (
-        <div className="flex items-center justify-between text-sm bg-blue-50 border border-blue-200 text-blue-800 rounded-lg px-4 py-2.5 mt-2">
-          <span>
-            Reconnected — please say <strong>"check"</strong> or continue your answer to resume.
-          </span>
-          <button
-            className="ml-3 text-blue-500 hover:text-blue-700 shrink-0"
-            onClick={() => setReconnectedPrompt(false)}
-          >
-            ✕
-          </button>
-        </div>
+        <Notice
+          variant="info"
+          className="mt-3"
+          action={
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-label="Dismiss"
+              onClick={() => setReconnectedPrompt(false)}
+            >
+              <X />
+            </Button>
+          }
+        >
+          Reconnected — please say <strong>"check"</strong> or continue your answer to resume.
+        </Notice>
       )}
 
       {/* Voice indicator */}
       <div className="flex-1 flex flex-col items-center justify-center gap-6 py-8">
         {interviewState === "connecting" ? (
-          <div className="text-sm text-muted-foreground animate-pulse">Connecting...</div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" /> Connecting...
+          </div>
         ) : interviewState === "draining_audio" ? (
           <div className="flex flex-col items-center gap-2 text-center">
             <VoiceBars active={true} label="AI speaking" variant="ai" />
@@ -478,18 +523,18 @@ export default function InterviewPage() {
       </div>
 
       {/* Bottom bar */}
-      <div className="border-t py-3 flex items-center justify-between gap-4 sticky bottom-0 bg-card">
+      <div className="sticky bottom-4 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl border bg-card/90 px-4 py-3 shadow-lg backdrop-blur">
         <ConnectionStatus state={wsConnectionStatus} />
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant={micMuted ? "destructive" : "outline"} size="sm" onClick={toggleMic}>
             {micMuted ? (
               <>
-                <MicOff className="h-3.5 w-3.5 mr-1.5" /> Muted
+                <MicOff /> Muted
               </>
             ) : (
               <>
-                <Mic className="h-3.5 w-3.5 mr-1.5" /> Mic On
+                <Mic /> Mic On
               </>
             )}
           </Button>
