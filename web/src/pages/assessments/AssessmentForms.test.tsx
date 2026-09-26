@@ -89,6 +89,16 @@ describe("AssessmentNewPage validation", () => {
     expect(assessmentsApi.create).not.toHaveBeenCalled();
   });
 
+  it("limits text fields to what the database column can store", async () => {
+    const user = userEvent.setup();
+    renderAt("/assessments/new");
+
+    await user.click(screen.getByRole("button", { name: /Add custom skill/ }));
+
+    expect(screen.getByLabelText(/Role title/)).toHaveAttribute("maxlength", "255");
+    expect(screen.getByLabelText(/^Name/)).toHaveAttribute("maxlength", "255");
+  });
+
   it("explains which custom skill fields are missing", async () => {
     const user = userEvent.setup();
     renderAt("/assessments/new");

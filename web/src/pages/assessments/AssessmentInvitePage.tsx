@@ -17,6 +17,7 @@ import LoadError from "@/components/LoadError";
 import { assessmentsApi } from "@/services/assessments";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
 import { copyText } from "@/utils/clipboard";
+import { MAX_TEXT_FIELD_LENGTH } from "@/utils/validation";
 import { LEVEL_LABELS } from "@/utils/constants";
 import { ArrowLeft, Copy, Check, Eye, Pencil, Clock, Plus, UserRound } from "lucide-react";
 import type { Assessment, Session } from "@/types";
@@ -285,6 +286,7 @@ export default function AssessmentInvitePage() {
             <Input
               id="candidate-name"
               placeholder="e.g. Budi Santoso"
+              maxLength={MAX_TEXT_FIELD_LENGTH}
               value={candidateNameInput}
               onChange={(e) => setCandidateNameInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleInviteCandidate()}

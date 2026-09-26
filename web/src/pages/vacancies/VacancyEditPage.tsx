@@ -13,7 +13,7 @@ import FieldError from "@/components/FieldError";
 import LoadError from "@/components/LoadError";
 import { vacanciesApi } from "@/services/vacancies";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
-import { requiredText } from "@/utils/validation";
+import { MAX_TEXT_FIELD_LENGTH, requiredText } from "@/utils/validation";
 import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
 import type { VacancySkill } from "@/types";
 
@@ -144,6 +144,7 @@ export default function VacancyEditPage() {
           </Label>
           <Input
             id="role_title"
+            maxLength={MAX_TEXT_FIELD_LENGTH}
             aria-invalid={!!errors.role_title}
             {...register("role_title", requiredText("Role title is required"))}
           />
