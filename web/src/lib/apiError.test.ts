@@ -1,7 +1,7 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
 
-import { NETWORK_ERROR_MESSAGE, getApiErrorMessage } from "@/lib/apiError";
+import { FORBIDDEN_MESSAGE, NETWORK_ERROR_MESSAGE, getApiErrorMessage } from "@/lib/apiError";
 
 function responseError(status: number, data: unknown) {
   const config = { headers: new AxiosHeaders() };
@@ -27,6 +27,11 @@ describe("getApiErrorMessage", () => {
   it("explains a request that never reached the server", () => {
     const error = new AxiosError("Network Error", "ERR_NETWORK");
     expect(getApiErrorMessage(error, "Failed.")).toBe(NETWORK_ERROR_MESSAGE);
+  });
+
+  it("explains a forbidden request as a permission problem", () => {
+    const error = responseError(403, { errors: [{ message: "Unauthorized request" }] });
+    expect(getApiErrorMessage(error, "Failed.")).toBe(FORBIDDEN_MESSAGE);
   });
 
   it("falls back for non-HTTP errors", () => {

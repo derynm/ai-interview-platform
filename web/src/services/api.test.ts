@@ -12,10 +12,10 @@ function rejectHandler(): RejectHandler {
   return handlers[0].rejected;
 }
 
-function unauthorized(url: string) {
+function unauthorized(url: string, status = 401) {
   const config = { url, headers: new AxiosHeaders() } as InternalAxiosRequestConfig;
   return new AxiosError("Unauthorized", "ERR_BAD_REQUEST", config, null, {
-    status: 401,
+    status,
     statusText: "",
     headers: {},
     config,
@@ -50,6 +50,14 @@ describe("api response interceptor", () => {
     await expect(rejectHandler()(unauthorized("/assessments"))).rejects.toBeInstanceOf(AxiosError);
     expect(window.location.href).toBe("/login");
     expect(localStorage.getItem("auth_token")).toBeNull();
+  });
+
+  it("keeps the user signed in when a request is forbidden", async () => {
+    await expect(rejectHandler()(unauthorized("/assessments", 403))).rejects.toBeInstanceOf(
+      AxiosError,
+    );
+    expect(window.location.href).toBe("/assessments");
+    expect(localStorage.getItem("auth_token")).toBe("stored-token");
   });
 
   it("gives up on requests that hang", () => {

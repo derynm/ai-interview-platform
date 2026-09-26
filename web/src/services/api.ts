@@ -29,7 +29,9 @@ api.interceptors.request.use((config) => {
 });
 
 // Unwrap backend envelope: { data: { ... } } → { ... }
-// On 401/403, clear stored credentials and redirect to login.
+// On 401 (missing/invalid token), clear stored credentials and redirect to login.
+// A 403 means the signed-in user lacks access to this resource; the page reports it
+// instead of discarding the session.
 api.interceptors.response.use(
   (response) => {
     if (response.data && typeof response.data === "object" && "data" in response.data) {
@@ -40,7 +42,7 @@ api.interceptors.response.use(
   (error) => {
     // A rejected sign-in is reported by the login form itself; reloading /login would erase it.
     const isLoginRequest = error.config?.url === LOGIN_PATH;
-    if (!isLoginRequest && (error.response?.status === 401 || error.response?.status === 403)) {
+    if (!isLoginRequest && error.response?.status === 401) {
       clearToken();
       window.location.href = "/login";
     }
