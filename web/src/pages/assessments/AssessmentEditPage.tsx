@@ -34,7 +34,7 @@ import LoadError from "@/components/LoadError";
 import { ArrowLeft, Plus, Loader2 } from "lucide-react";
 import { assessmentsApi } from "@/services/assessments";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
-import { requiredText } from "@/utils/validation";
+import { MAX_TEXT_FIELD_LENGTH, requiredText } from "@/utils/validation";
 import { TIME_LIMIT_OPTIONS } from "@/utils/constants";
 import type { AssessmentFormValues } from "./AssessmentNewPage";
 
@@ -179,6 +179,7 @@ export default function AssessmentEditPage() {
           </Label>
           <Input
             id="name"
+            maxLength={MAX_TEXT_FIELD_LENGTH}
             aria-invalid={!!errors.name}
             {...register("name", requiredText("Role title is required"))}
           />
