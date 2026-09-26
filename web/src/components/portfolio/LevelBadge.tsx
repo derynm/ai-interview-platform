@@ -14,7 +14,7 @@ export default function LevelBadge({ level, size = "md", className }: LevelBadge
   return (
     <div
       className={cn(
-        "inline-flex flex-col items-center justify-center rounded font-semibold",
+        "inline-flex flex-col items-center justify-center rounded-xl font-semibold",
         size === "md" ? "px-3 py-2 min-w-14 text-base" : "px-2 py-1 min-w-10 text-sm",
         rated ? LEVEL_BADGE_CLASSES[level] : "border border-dashed text-muted-foreground",
         className,
