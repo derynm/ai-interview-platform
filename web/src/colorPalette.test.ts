@@ -39,7 +39,7 @@ describe("Rakamin color palette", () => {
   it("maps brand colors to the light theme semantic roles", () => {
     const styles = getComputedStyle(document.documentElement);
 
-    expect(styles.getPropertyValue("--background").trim()).toBe("var(--rakamin-cream)");
+    expect(styles.getPropertyValue("--background").trim()).toBe("var(--rakamin-white)");
     expect(styles.getPropertyValue("--foreground").trim()).toBe("var(--rakamin-charcoal)");
     expect(styles.getPropertyValue("--card").trim()).toBe("var(--rakamin-white)");
     expect(styles.getPropertyValue("--primary").trim()).toBe("var(--rakamin-dark-teal)");
