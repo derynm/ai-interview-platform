@@ -45,7 +45,7 @@
     --input: 155 190 194;
     --ring: var(--rakamin-teal);
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
   .dark {
@@ -85,6 +85,26 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer components {
+  /* Soft teal "sky" with a warm yellow glow, built only from the brand palette. */
+  .bg-brand-gradient {
+    background-color: rgb(var(--rakamin-light-cyan));
+    background-image:
+      radial-gradient(60% 50% at 85% 15%, rgb(var(--rakamin-yellow) / 0.28), transparent 70%),
+      radial-gradient(70% 60% at 10% 0%, rgb(var(--rakamin-teal) / 0.45), transparent 70%),
+      linear-gradient(180deg, rgb(var(--rakamin-teal) / 0.25) 0%, rgb(var(--rakamin-white)) 100%);
+  }
+
+  /* Faint wash behind app pages so white cards read as raised surfaces. */
+  .bg-page-wash {
+    background-image: linear-gradient(
+      180deg,
+      rgb(var(--rakamin-light-cyan)) 0%,
+      rgb(var(--rakamin-white)) 22rem
+    );
   }
 }
