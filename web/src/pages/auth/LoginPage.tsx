@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSetAtom } from "jotai";
 import { authAtom, saveToken } from "@/stores/authAtom";
 import { authApi } from "@/services/auth";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,8 +27,13 @@ export default function LoginPage() {
       saveToken(token);
       setAuth({ token });
       navigate("/assessments");
-    } catch {
-      setError("Invalid email or password.");
+    } catch (requestError: unknown) {
+      // Only a 401 means bad credentials; don't blame the password for an outage.
+      setError(
+        getApiErrorStatus(requestError) === 401
+          ? "Invalid email or password."
+          : getApiErrorMessage(requestError, "Sign-in failed. Please try again."),
+      );
     } finally {
       setLoading(false);
     }
