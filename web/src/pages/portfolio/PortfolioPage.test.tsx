@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import PortfolioPage from "@/pages/portfolio/PortfolioPage";
 import { sessionsApi } from "@/services/sessions";
@@ -110,5 +110,36 @@ describe("PortfolioPage", () => {
     await user.click(await screen.findByRole("button", { name: /PDF/ }));
 
     expect(await screen.findByText("Export failed. Please try again.")).toBeInTheDocument();
+  });
+});
+
+describe("PortfolioPage generation polling", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("stops polling after 10 minutes and says generation is taking too long", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    vi.mocked(sessionsApi.getPortfolio)
+      .mockReset()
+      .mockResolvedValue({ data: { status: "generating" } } as Awaited<
+        ReturnType<typeof sessionsApi.getPortfolio>
+      >);
+    vi.mocked(sessionsApi.get).mockResolvedValue({
+      data: { session: { candidate_name: "Budi" } },
+    } as Awaited<ReturnType<typeof sessionsApi.get>>);
+    vi.mocked(vacanciesApi.list).mockResolvedValue({
+      data: { vacancies: [] },
+    } as unknown as Awaited<ReturnType<typeof vacanciesApi.list>>);
+    renderPage();
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(screen.getByText("Generating portfolio...")).toBeInTheDocument();
+
+    await act(() => vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 5000));
+
+    expect(screen.getByText(/taking longer than expected/)).toBeInTheDocument();
+    const callsAtTimeout = vi.mocked(sessionsApi.getPortfolio).mock.calls.length;
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+    expect(sessionsApi.getPortfolio).toHaveBeenCalledTimes(callsAtTimeout);
   });
 });
