@@ -11,6 +11,7 @@ import {
   getOSInfo,
   checkCamera,
   getCurrentTime,
+  isBrowserSupported,
 } from "@/utils/hardwareUtils";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, CheckCircle, XCircle, Loader2, Circle } from "lucide-react";
@@ -35,6 +36,18 @@ function stateLabel(state: ProctoringState) {
 }
 
 const REQUIRE_CAMERA = import.meta.env.VITE_REQUIRE_CAMERA === "true";
+
+// What the candidate can do about each failed check.
+const FAILURE_HINTS: Record<keyof HardwareCheckingProgress, string> = {
+  osAndBrowser:
+    "This browser is missing features the interview needs. Use a recent version of Chrome, Edge, Firefox, or Safari, and open the link over https.",
+  internet: `Your connection is below the minimum (↓ ${DEFAULT_THRESHOLDS.minDownloadMbps} Mbps, ↑ ${DEFAULT_THRESHOLDS.minUploadMbps} Mbps, ping under ${DEFAULT_THRESHOLDS.maxPingMs} ms). Move closer to your router or switch networks, then retry.`,
+  camera:
+    "Allow camera access for this site in your browser settings and make sure a camera is connected, then retry.",
+  microphone:
+    "Allow microphone access for this site in your browser settings and make sure a microphone is connected, then retry.",
+  audio: "We couldn't play sound. Check your speakers or headphones, then retry.",
+};
 
 const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
   const [progress, setProgress] = useState<HardwareCheckingProgress>({
@@ -123,10 +136,11 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
       getBrowserInfo();
       getOSInfo();
       getCurrentTime();
+      const supported = isBrowserSupported();
       setProgress((p) => ({
         ...p,
-        osAndBrowser: ProctoringState.PASSED,
-        internet: ProctoringState.LOADING,
+        osAndBrowser: supported ? ProctoringState.PASSED : ProctoringState.ERROR,
+        ...(supported ? { internet: ProctoringState.LOADING } : {}),
       }));
     }, 800);
     return () => clearTimeout(timer);
@@ -270,6 +284,10 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
                 </span>
               </div>
             </div>
+
+            {progress[key] === ProctoringState.ERROR && (
+              <p className="mt-1.5 text-xs text-destructive">{FAILURE_HINTS[key]}</p>
+            )}
 
             {/* Internet speed details */}
             {key === "internet" && internetResult && (

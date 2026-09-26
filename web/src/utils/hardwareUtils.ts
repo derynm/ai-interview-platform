@@ -47,6 +47,18 @@ export function getOSInfo() {
   return os;
 }
 
+/**
+ * Browser APIs the interview needs. navigator.mediaDevices is also missing on insecure
+ * (plain http, non-localhost) origins.
+ */
+export function isBrowserSupported(): boolean {
+  return (
+    typeof navigator.mediaDevices?.getUserMedia === "function" &&
+    typeof window.AudioWorkletNode === "function" &&
+    typeof window.WebSocket === "function"
+  );
+}
+
 export async function checkCamera(): Promise<MediaStream | null> {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
