@@ -64,4 +64,22 @@ describe("LiveMonitorPage", () => {
     expect(screen.getByRole("button", { name: "Reconnect" })).toBeInTheDocument();
     expect(screen.queryByText("Reconnecting...")).not.toBeInTheDocument();
   });
+
+  it("labels candidate turns as the candidate, not as the assessor", async () => {
+    vi.mocked(useCoverageWebSocket).mockReturnValue(socketState());
+    vi.mocked(sessionsApi.get).mockResolvedValue({
+      data: { session: { status: "active", started_at: new Date().toISOString() } },
+    } as Awaited<ReturnType<typeof sessionsApi.get>>);
+    vi.mocked(sessionsApi.getTranscript).mockResolvedValue({
+      data: {
+        turns: [{ id: 1, turn_number: 1, speaker: "candidate", text: "I profiled the list." }],
+        total: 1,
+      },
+    } as Awaited<ReturnType<typeof sessionsApi.getTranscript>>);
+    renderPage();
+
+    await screen.findByText("I profiled the list.");
+    expect(screen.getByText("Candidate")).toBeInTheDocument();
+    expect(screen.queryByText("You")).not.toBeInTheDocument();
+  });
 });
