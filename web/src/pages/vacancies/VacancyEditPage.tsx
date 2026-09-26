@@ -57,7 +57,11 @@ export default function VacancyEditPage() {
       skills: [],
     },
   });
-  const { fields, append, remove } = useFieldArray({ control, name: "skills" });
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "skills",
+    rules: { required: "At least one skill is required" },
+  });
   const { blocker, allowNavigation } = useUnsavedChangesGuard(isDirty);
 
   const loadVacancy = useCallback(() => {
@@ -101,8 +105,8 @@ export default function VacancyEditPage() {
     try {
       await vacanciesApi.update(Number(id), {
         role_title: data.role_title.trim(),
-        culture_dimensions: data.culture_dimensions,
-        competency_expectations: data.competency_expectations,
+        culture_dimensions: data.culture_dimensions.trim(),
+        competency_expectations: data.competency_expectations.trim(),
         vacancy_skills_attributes: [
           ...data.skills,
           ...removedSkillIds.map((skillId) => ({ id: skillId, _destroy: true })),
@@ -162,7 +166,7 @@ export default function VacancyEditPage() {
 
         <FormSection
           title="Expected skills"
-          description="The levels a strong hire for this role should demonstrate."
+          description="Required. Add the levels a strong hire for this role should demonstrate."
         >
           {fields.length === 0 ? (
             <EmptyState icon={ListChecks} title="No skills added yet." />
@@ -185,6 +189,7 @@ export default function VacancyEditPage() {
           <Button type="button" variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
             <Plus /> Add skill expectation
           </Button>
+          <FieldError message={errors.skills?.root?.message} />
         </FormSection>
 
         <FormSection
@@ -192,23 +197,34 @@ export default function VacancyEditPage() {
           description="Used to write the narrative in fit/gap reports."
         >
           <div className="space-y-2">
-            <Label htmlFor="culture_dimensions">Company culture</Label>
+            <Label htmlFor="culture_dimensions">
+              Company culture <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               id="culture_dimensions"
               placeholder="Ownership-driven, async-first, direct feedback culture..."
               rows={3}
-              {...register("culture_dimensions")}
+              aria-invalid={!!errors.culture_dimensions}
+              {...register("culture_dimensions", requiredText("Company culture is required"))}
             />
+            <FieldError message={errors.culture_dimensions?.message} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="competency_expectations">Competency expectations</Label>
+            <Label htmlFor="competency_expectations">
+              Competency expectations <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               id="competency_expectations"
               placeholder="Strong communicator who can align cross-functional teams..."
               rows={3}
-              {...register("competency_expectations")}
+              aria-invalid={!!errors.competency_expectations}
+              {...register(
+                "competency_expectations",
+                requiredText("Competency expectations are required"),
+              )}
             />
+            <FieldError message={errors.competency_expectations?.message} />
           </div>
         </FormSection>
 
