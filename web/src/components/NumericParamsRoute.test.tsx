@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, RouterProvider, Routes, createMemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import NumericParamsRoute from "@/components/NumericParamsRoute";
@@ -32,5 +32,22 @@ describe("NumericParamsRoute", () => {
     renderAt("/assessments/7/sessions/abc/portfolio");
     expect(screen.getByText("Page not found")).toBeInTheDocument();
     expect(screen.queryByText("Portfolio")).not.toBeInTheDocument();
+  });
+
+  it("ignores the splat param when mounted under a catch-all data route, as in main.tsx", () => {
+    const routes = (
+      <Routes>
+        <Route element={<NumericParamsRoute />}>
+          <Route path="/assessments" element={<p>Assessment list</p>} />
+        </Route>
+      </Routes>
+    );
+    const router = createMemoryRouter([{ path: "*", element: routes }], {
+      initialEntries: ["/assessments"],
+    });
+    render(<RouterProvider router={router} />);
+
+    expect(screen.getByText("Assessment list")).toBeInTheDocument();
+    expect(screen.queryByText("Page not found")).not.toBeInTheDocument();
   });
 });
