@@ -1,35 +1,50 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import LoadError from "@/components/LoadError";
 import { Search, Loader2 } from "lucide-react";
 import { skillTaxonomiesApi } from "@/services/skillTaxonomies";
+import { getApiErrorMessage } from "@/lib/apiError";
 import type { AssessmentSkill, SkillTaxonomy } from "@/types";
 
 interface SkillPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (skill: Partial<AssessmentSkill>) => void;
+  // Labels already on the form; those skills are shown but cannot be added twice.
+  addedLabels?: string[];
 }
 
-export default function SkillPicker({ open, onOpenChange, onSelect }: SkillPickerProps) {
+export default function SkillPicker({
+  open,
+  onOpenChange,
+  onSelect,
+  addedLabels = [],
+}: SkillPickerProps) {
   const [skills, setSkills] = useState<SkillTaxonomy[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
+  const loadSkills = useCallback(() => {
     setLoading(true);
+    setError(null);
     skillTaxonomiesApi
       .list()
       .then((res) => setSkills(res.data.skill_taxonomies ?? []))
-      .catch((err) => {
-        console.error("skill_taxonomies fetch failed:", err);
+      .catch((requestError: unknown) => {
         setSkills([]);
+        setError(getApiErrorMessage(requestError, "Failed to load skills."));
       })
       .finally(() => setLoading(false));
-  }, [open]);
+  }, []);
+
+  useEffect(() => {
+    if (open) loadSkills();
+  }, [open, loadSkills]);
 
   const filtered = skills.filter((s) => s.skill_label.toLowerCase().includes(query.toLowerCase()));
+  const added = new Set(addedLabels.map((label) => label.trim().toLowerCase()));
 
   const handleSelect = (s: SkillTaxonomy) => {
     onSelect({
@@ -71,19 +86,26 @@ export default function SkillPicker({ open, onOpenChange, onSelect }: SkillPicke
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
+          ) : error ? (
+            <LoadError message={error} onRetry={loadSkills} />
           ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">No skills found.</p>
           ) : (
-            filtered.map((s) => (
-              <button
-                key={s.skill_id}
-                type="button"
-                onClick={() => handleSelect(s)}
-                className="w-full text-left px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-              >
-                {s.skill_label}
-              </button>
-            ))
+            filtered.map((s) => {
+              const isAdded = added.has(s.skill_label.trim().toLowerCase());
+              return (
+                <button
+                  key={s.skill_id}
+                  type="button"
+                  onClick={() => handleSelect(s)}
+                  disabled={isAdded}
+                  className="w-full flex items-center justify-between text-left px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm disabled:opacity-50 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                >
+                  <span>{s.skill_label}</span>
+                  {isAdded && <span className="text-xs text-muted-foreground">Added</span>}
+                </button>
+              );
+            })
           )}
         </div>
       </DialogContent>
