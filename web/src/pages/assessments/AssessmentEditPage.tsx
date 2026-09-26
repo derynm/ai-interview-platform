@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
@@ -29,9 +29,12 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import SkillCard from "@/components/assessment/SkillCard";
 import SkillPicker from "@/components/assessment/SkillPicker";
+import FieldError from "@/components/FieldError";
+import LoadError from "@/components/LoadError";
 import { ArrowLeft, Plus, Loader2 } from "lucide-react";
 import { assessmentsApi } from "@/services/assessments";
-import { getApiErrorMessage } from "@/lib/apiError";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
+import { requiredText } from "@/utils/validation";
 import { TIME_LIMIT_OPTIONS } from "@/utils/constants";
 import type { AssessmentFormValues } from "./AssessmentNewPage";
 
@@ -42,24 +45,60 @@ export default function AssessmentEditPage() {
   const [submitting, setSubmitting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Saved skills the assessor removed; the API only deletes nested rows marked _destroy.
+  const [removedSkillIds, setRemovedSkillIds] = useState<number[]>([]);
 
   const form = useForm<AssessmentFormValues>({
-    defaultValues: { name: "", time_limit_min: 45, skills: [] },
+    defaultValues: { name: "", time_limit_min: 45, language: "en", skills: [] },
   });
 
-  const { register, handleSubmit, control, setValue, reset } = form;
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    getValues,
+    watch,
+    reset,
+    formState: { errors },
+  } = form;
   const { fields, append, remove, move } = useFieldArray({ control, name: "skills" });
 
-  useEffect(() => {
+  const loadAssessment = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
     assessmentsApi
       .get(Number(id))
       .then((res) => {
         const a = res.data.assessment;
-        reset({ name: a.name, time_limit_min: a.time_limit_min, skills: a.skills });
+        reset({
+          name: a.name,
+          time_limit_min: a.time_limit_min,
+          language: a.language ?? "en",
+          skills: a.skills,
+        });
+        setRemovedSkillIds([]);
       })
-      .catch(() => {})
+      .catch((requestError: unknown) =>
+        setLoadError(
+          getApiErrorStatus(requestError) === 404
+            ? "This assessment doesn't exist or was deleted."
+            : getApiErrorMessage(requestError, "Failed to load the assessment."),
+        ),
+      )
       .finally(() => setLoading(false));
   }, [id, reset]);
+
+  useEffect(() => {
+    loadAssessment();
+  }, [loadAssessment]);
+
+  const removeSkill = (index: number) => {
+    const savedId = getValues(`skills.${index}.id`);
+    if (savedId) setRemovedSkillIds((prev) => [...prev, savedId]);
+    remove(index);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -84,9 +123,13 @@ export default function AssessmentEditPage() {
     setSubmitting(true);
     try {
       await assessmentsApi.update(Number(id), {
-        name: data.name,
+        name: data.name.trim(),
         time_limit_min: data.time_limit_min,
-        assessment_skills_attributes: data.skills.map((s, i) => ({ ...s, display_order: i })),
+        language: data.language,
+        assessment_skills_attributes: [
+          ...data.skills.map((s, i) => ({ ...s, display_order: i })),
+          ...removedSkillIds.map((skillId) => ({ id: skillId, _destroy: true })),
+        ],
       });
       navigate(`/assessments/${id}/invite`);
     } catch (requestError: unknown) {
@@ -107,6 +150,17 @@ export default function AssessmentEditPage() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <Link to="/assessments" className="text-sm text-muted-foreground hover:text-foreground">
+          ← Back to assessments
+        </Link>
+        <LoadError message={loadError} onRetry={loadAssessment} />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center gap-2 mb-6">
@@ -123,7 +177,12 @@ export default function AssessmentEditPage() {
           <Label htmlFor="name">
             Role title <span className="text-destructive">*</span>
           </Label>
-          <Input id="name" {...register("name", { required: true })} />
+          <Input
+            id="name"
+            aria-invalid={!!errors.name}
+            {...register("name", requiredText("Role title is required"))}
+          />
+          <FieldError message={errors.name?.message} />
         </div>
 
         <div className="space-y-1.5">
@@ -131,7 +190,7 @@ export default function AssessmentEditPage() {
             Session time limit <span className="text-destructive">*</span>
           </Label>
           <Select
-            value={String(form.watch("time_limit_min"))}
+            value={String(watch("time_limit_min"))}
             onValueChange={(v) => setValue("time_limit_min", Number(v))}
           >
             <SelectTrigger className="w-40">
@@ -143,6 +202,22 @@ export default function AssessmentEditPage() {
                   {min} min
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Interview language</Label>
+          <Select
+            value={watch("language")}
+            onValueChange={(v) => setValue("language", v as "en" | "id")}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="en">English</SelectItem>
+              <SelectItem value="id">Indonesian</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -172,7 +247,7 @@ export default function AssessmentEditPage() {
                       id={field.id}
                       index={index}
                       form={form}
-                      onRemove={() => remove(index)}
+                      onRemove={() => removeSkill(index)}
                     />
                   ))}
                 </div>
@@ -223,6 +298,7 @@ export default function AssessmentEditPage() {
         open={pickerOpen}
         onOpenChange={setPickerOpen}
         onSelect={(s) => append({ ...s, display_order: fields.length })}
+        addedLabels={watch("skills").map((s) => s.skill_label ?? "")}
       />
     </div>
   );
