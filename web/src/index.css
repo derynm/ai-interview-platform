@@ -15,7 +15,7 @@
     --rakamin-gray: 119 119 119; /* #777777 */
     --rakamin-white: 255 255 255; /* #FFFFFF */
 
-    --background: var(--rakamin-cream);
+    --background: var(--rakamin-white);
     --foreground: var(--rakamin-charcoal);
 
     --card: var(--rakamin-white);
