@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -62,15 +62,16 @@ const savedAssessment: Assessment = {
 };
 
 function renderAt(path: string) {
-  render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/assessments/new" element={<AssessmentNewPage />} />
-        <Route path="/assessments/:id/edit" element={<AssessmentEditPage />} />
-        <Route path="/assessments/:id/invite" element={<p>Invite page</p>} />
-      </Routes>
-    </MemoryRouter>,
+  const router = createMemoryRouter(
+    [
+      { path: "/assessments", element: <p>Assessment list</p> },
+      { path: "/assessments/new", element: <AssessmentNewPage /> },
+      { path: "/assessments/:id/edit", element: <AssessmentEditPage /> },
+      { path: "/assessments/:id/invite", element: <p>Invite page</p> },
+    ],
+    { initialEntries: [path] },
   );
+  render(<RouterProvider router={router} />);
 }
 
 describe("AssessmentNewPage validation", () => {
@@ -153,5 +154,69 @@ describe("AssessmentEditPage", () => {
       expect.objectContaining({ id: 12, skill_label: "Testing", display_order: 0 }),
       { id: 11, _destroy: true },
     ]);
+  });
+});
+
+describe("Unsaved changes", () => {
+  beforeEach(() => {
+    vi.mocked(assessmentsApi.get).mockReset();
+    vi.mocked(assessmentsApi.update).mockReset();
+  });
+
+  it("asks before leaving a form with unsaved changes", async () => {
+    const user = userEvent.setup();
+    renderAt("/assessments/new");
+
+    await user.type(screen.getByLabelText(/Role title/), "Frontend Engineer");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(await screen.findByText("Discard unsaved changes?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(screen.getByDisplayValue("Frontend Engineer")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(await screen.findByRole("button", { name: "Discard changes" }));
+    expect(await screen.findByText("Assessment list")).toBeInTheDocument();
+  });
+
+  it("leaves an untouched form without asking", async () => {
+    const user = userEvent.setup();
+    renderAt("/assessments/new");
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(await screen.findByText("Assessment list")).toBeInTheDocument();
+  });
+
+  it("counts a level change as an unsaved change", async () => {
+    vi.mocked(assessmentsApi.get).mockResolvedValue({
+      data: { assessment: savedAssessment },
+    } as Awaited<ReturnType<typeof assessmentsApi.get>>);
+    const user = userEvent.setup();
+    renderAt("/assessments/7/edit");
+
+    await screen.findByDisplayValue("Frontend Engineer");
+    await user.click(screen.getAllByText("L5")[0]);
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(await screen.findByText("Discard unsaved changes?")).toBeInTheDocument();
+  });
+
+  it("does not ask after a successful save", async () => {
+    vi.mocked(assessmentsApi.get).mockResolvedValue({
+      data: { assessment: savedAssessment },
+    } as Awaited<ReturnType<typeof assessmentsApi.get>>);
+    vi.mocked(assessmentsApi.update).mockResolvedValue(
+      {} as Awaited<ReturnType<typeof assessmentsApi.update>>,
+    );
+    const user = userEvent.setup();
+    renderAt("/assessments/7/edit");
+
+    const title = await screen.findByDisplayValue("Frontend Engineer");
+    await user.type(title, " II");
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(await screen.findByText("Invite page")).toBeInTheDocument();
+    expect(screen.queryByText("Discard unsaved changes?")).not.toBeInTheDocument();
   });
 });

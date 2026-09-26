@@ -9,6 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import LevelRadio from "@/components/assessment/LevelRadio";
 import SkillPicker from "@/components/assessment/SkillPicker";
 import FieldError from "@/components/FieldError";
+import UnsavedChangesDialog from "@/components/UnsavedChangesDialog";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { vacanciesApi } from "@/services/vacancies";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { MAX_TEXT_FIELD_LENGTH, requiredText } from "@/utils/validation";
@@ -34,7 +36,7 @@ export default function VacancyNewPage() {
     control,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<VacancyFormValues>({
     defaultValues: {
       role_title: "",
@@ -45,6 +47,7 @@ export default function VacancyNewPage() {
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: "skills" });
+  const { blocker, allowNavigation } = useUnsavedChangesGuard(isDirty);
 
   const onSubmit = async (data: VacancyFormValues) => {
     setError(null);
@@ -56,6 +59,7 @@ export default function VacancyNewPage() {
         competency_expectations: data.competency_expectations,
         vacancy_skills_attributes: data.skills,
       });
+      allowNavigation();
       navigate("/vacancies");
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, "Failed to save vacancy."));
@@ -121,7 +125,9 @@ export default function VacancyNewPage() {
                     <span className="text-xs text-muted-foreground">Expected level:</span>
                     <LevelRadio
                       value={watch(`skills.${index}.expected_level`) ?? 3}
-                      onChange={(v) => setValue(`skills.${index}.expected_level`, v)}
+                      onChange={(v) =>
+                        setValue(`skills.${index}.expected_level`, v, { shouldDirty: true })
+                      }
                     />
                   </div>
                 </div>
@@ -170,6 +176,8 @@ export default function VacancyNewPage() {
           </Button>
         </div>
       </form>
+
+      <UnsavedChangesDialog blocker={blocker} />
 
       <SkillPicker
         open={pickerOpen}
