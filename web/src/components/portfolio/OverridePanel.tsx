@@ -7,6 +7,7 @@ import LevelBadge from "./LevelBadge";
 import { portfoliosApi } from "@/services/portfolios";
 import { Loader2, Pencil } from "lucide-react";
 import { parseLevel } from "@/utils/constants";
+import { getApiErrorMessage } from "@/lib/apiError";
 import type { PortfolioSkill, AssessorOverride } from "@/types";
 
 interface OverridePanelProps {
@@ -16,19 +17,29 @@ interface OverridePanelProps {
 }
 
 export default function OverridePanel({ skill, existingOverride, onSaved }: OverridePanelProps) {
+  const aiLevel = parseLevel(skill.ai_level);
   const [open, setOpen] = useState(false);
-  const [overrideLevel, setOverrideLevel] = useState(
-    existingOverride?.override_level ?? parseLevel(skill.ai_level),
+  const [overrideLevel, setOverrideLevel] = useState<number | null>(
+    existingOverride?.override_level ?? aiLevel,
   );
   const [notes, setNotes] = useState(existingOverride?.assessor_notes ?? "");
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const hasOverride = !!existingOverride;
 
+  // Cancel discards the draft so reopening shows what is actually saved.
+  const handleCancel = () => {
+    setOverrideLevel(existingOverride?.override_level ?? aiLevel);
+    setNotes(existingOverride?.assessor_notes ?? "");
+    setSaveError(null);
+    setOpen(false);
+  };
+
   const handleSave = async () => {
+    if (overrideLevel === null) return;
     setSaving(true);
-    setSaveError(false);
+    setSaveError(null);
     try {
       const res = await portfoliosApi.getOverride(skill.id, {
         override_level: overrideLevel,
@@ -36,8 +47,8 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
       });
       onSaved(res.data.override);
       setOpen(false);
-    } catch {
-      setSaveError(true);
+    } catch (requestError: unknown) {
+      setSaveError(getApiErrorMessage(requestError, "Failed to save override. Please try again."));
     } finally {
       setSaving(false);
     }
@@ -49,7 +60,7 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
         {hasOverride ? (
           <>
             <div className="flex items-center gap-1.5 text-sm">
-              <LevelBadge level={parseLevel(skill.ai_level)} size="sm" />
+              <LevelBadge level={aiLevel} size="sm" />
               <span className="text-muted-foreground text-xs">AI</span>
               <span className="text-muted-foreground">→</span>
               <LevelBadge level={existingOverride!.override_level} size="sm" />
@@ -92,15 +103,13 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
         />
       </div>
 
-      {saveError && (
-        <p className="text-xs text-destructive">Failed to save override. Please try again.</p>
-      )}
+      {saveError && <p className="text-xs text-destructive">{saveError}</p>}
 
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+        <Button variant="outline" size="sm" onClick={handleCancel}>
           Cancel
         </Button>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
+        <Button size="sm" onClick={handleSave} disabled={saving || overrideLevel === null}>
           {saving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           Save override
         </Button>
