@@ -429,12 +429,12 @@ export default function LandingPage() {
 
       <main>
         {/* Principles strip */}
-        <section className="mx-auto max-w-5xl px-4 pt-14 text-center">
+        <section className="mx-auto max-w-5xl px-4 pt-12 text-center sm:pt-14">
           <Reveal>
             <p className="text-sm text-muted-foreground">
               Designed around how careful interviewers work
             </p>
-            <ul className="mt-5 flex flex-wrap justify-center gap-2 text-sm">
+            <ul className="mt-5 grid grid-cols-2 gap-2 text-xs sm:flex sm:flex-wrap sm:justify-center sm:text-sm">
               {[
                 "Follow-ups on real answers",
                 "Coverage tracked for every skill",
@@ -445,7 +445,7 @@ export default function LandingPage() {
                   key={item}
                   className={cn(
                     CARD_HOVER,
-                    "inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-rakamin-charcoal shadow-sm",
+                    "inline-flex h-full items-center justify-center gap-2 rounded-2xl border bg-card px-3 py-2 text-rakamin-charcoal shadow-sm sm:rounded-full sm:px-4",
                   )}
                 >
                   <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-rakamin-yellow" />
@@ -457,7 +457,7 @@ export default function LandingPage() {
         </section>
 
         {/* Belief */}
-        <section className="mx-auto max-w-5xl px-4 py-20">
+        <section className="mx-auto max-w-5xl px-4 py-14 sm:py-20">
           <Reveal className="grid gap-8 md:grid-cols-2 md:gap-12">
             <h2 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
               A hiring decision should rest on evidence, not a gut feeling
@@ -475,16 +475,23 @@ export default function LandingPage() {
         </section>
 
         {/* How it works */}
-        <section id="how-it-works" className="scroll-mt-8 mx-auto max-w-6xl px-4 pb-20">
-          <Reveal className="mb-10 text-center">
+        <section id="how-it-works" className="scroll-mt-8 mx-auto max-w-6xl px-4 pb-14 sm:pb-20">
+          <Reveal className="mb-8 text-center sm:mb-10">
             <Eyebrow>How it works</Eyebrow>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
               From role to results <span className="text-rakamin-teal">in three steps</span>
             </h2>
+            <p className="mt-3 text-xs text-muted-foreground md:hidden">
+              Swipe or scroll to see all three steps
+            </p>
           </Reveal>
-          <ol className="grid gap-6 md:grid-cols-3">
+          <ol
+            aria-label="Assessment workflow"
+            tabIndex={0}
+            className="grid snap-x snap-mandatory auto-cols-[88%] grid-flow-col gap-4 overflow-x-auto scroll-smooth pb-4 pr-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:snap-none md:auto-cols-auto md:grid-flow-row md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0 md:pr-0"
+          >
             {STEPS.map((step, i) => (
-              <li key={step.title}>
+              <li key={step.title} className="snap-start">
                 <Reveal delay={i * 120} className="group flex h-full flex-col">
                   <div className="flex aspect-[4/3] items-center rounded-3xl bg-rakamin-light-cyan/60 p-5 transition-transform duration-300 group-hover:-translate-y-1 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0">
                     {step.preview}
@@ -505,7 +512,7 @@ export default function LandingPage() {
         </section>
 
         {/* Features */}
-        <section id="features" className="scroll-mt-8 bg-rakamin-light-cyan/40 py-20">
+        <section id="features" className="scroll-mt-8 bg-rakamin-light-cyan/40 py-14 sm:py-20">
           <div className="mx-auto max-w-6xl px-4">
             <Reveal className="mb-10 text-center">
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -517,54 +524,78 @@ export default function LandingPage() {
                 Set up, monitor, and review interviews without switching tools, with every rating
                 linked to what the candidate said.
               </p>
+              <p className="mt-3 text-xs text-muted-foreground md:hidden">
+                Swipe or scroll to see both highlights
+              </p>
             </Reveal>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Reveal>
-                <article
-                  className={cn(CARD_HOVER, "flex h-full flex-col rounded-3xl border bg-card p-6")}
-                >
-                  <Eyebrow className="self-start">Live monitor</Eyebrow>
-                  <h3 className="mt-4 text-lg font-semibold">
-                    Watch skill coverage fill in while the interview runs
-                  </h3>
-                  <div className="my-6 flex flex-1 items-center justify-center rounded-2xl bg-rakamin-light-cyan/60 p-5">
-                    <CoveragePreview />
-                  </div>
-                  <p className="text-sm text-rakamin-charcoal/80">
-                    <strong className="font-semibold text-rakamin-charcoal">
-                      Skills move from not started to covered
-                    </strong>{" "}
-                    as follow-up questions add evidence. The transcript updates beside them.
-                  </p>
-                </article>
-              </Reveal>
-              <Reveal delay={120}>
-                <article
-                  className={cn(CARD_HOVER, "flex h-full flex-col rounded-3xl border bg-card p-6")}
-                >
-                  <Eyebrow className="self-start">Evidence-backed portfolio</Eyebrow>
-                  <h3 className="mt-4 text-lg font-semibold">
-                    Ratings you can trace to the transcript
-                  </h3>
-                  <div className="my-6 flex flex-1 items-center justify-center rounded-2xl bg-rakamin-light-cyan/60 p-5">
-                    <PortfolioPreview className="w-full max-w-sm" />
-                  </div>
-                  <p className="text-sm text-rakamin-charcoal/80">
-                    <strong className="font-semibold text-rakamin-charcoal">
-                      Level, confidence, and quotes for every skill,
-                    </strong>{" "}
-                    including relevant skills the interviewer found outside the plan.
-                  </p>
-                </article>
-              </Reveal>
-            </div>
-
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
-              {SMALL_FEATURES.map(({ icon: Icon, title, body }, i) => (
-                <Reveal key={title} delay={i * 120}>
+            <ul
+              aria-label="Product highlights"
+              tabIndex={0}
+              className="grid snap-x snap-mandatory auto-cols-[88%] grid-flow-col gap-4 overflow-x-auto scroll-smooth pb-4 pr-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:snap-none md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0"
+            >
+              <li className="snap-start">
+                <Reveal className="h-full">
                   <article
-                    className={cn(CARD_HOVER, "group h-full rounded-3xl border bg-card p-6")}
+                    className={cn(
+                      CARD_HOVER,
+                      "flex h-full flex-col rounded-3xl border bg-card p-6",
+                    )}
+                  >
+                    <Eyebrow className="self-start">Live monitor</Eyebrow>
+                    <h3 className="mt-4 text-lg font-semibold">
+                      Watch skill coverage fill in while the interview runs
+                    </h3>
+                    <div className="my-6 flex flex-1 items-center justify-center rounded-2xl bg-rakamin-light-cyan/60 p-5">
+                      <CoveragePreview />
+                    </div>
+                    <p className="text-sm text-rakamin-charcoal/80">
+                      <strong className="font-semibold text-rakamin-charcoal">
+                        Skills move from not started to covered
+                      </strong>{" "}
+                      as follow-up questions add evidence. The transcript updates beside them.
+                    </p>
+                  </article>
+                </Reveal>
+              </li>
+              <li className="snap-start">
+                <Reveal delay={120} className="h-full">
+                  <article
+                    className={cn(
+                      CARD_HOVER,
+                      "flex h-full flex-col rounded-3xl border bg-card p-6",
+                    )}
+                  >
+                    <Eyebrow className="self-start">Evidence-backed portfolio</Eyebrow>
+                    <h3 className="mt-4 text-lg font-semibold">
+                      Ratings you can trace to the transcript
+                    </h3>
+                    <div className="my-6 flex flex-1 items-center justify-center rounded-2xl bg-rakamin-light-cyan/60 p-5">
+                      <PortfolioPreview className="w-full max-w-sm" />
+                    </div>
+                    <p className="text-sm text-rakamin-charcoal/80">
+                      <strong className="font-semibold text-rakamin-charcoal">
+                        Level, confidence, and quotes for every skill,
+                      </strong>{" "}
+                      including relevant skills the interviewer found outside the plan.
+                    </p>
+                  </article>
+                </Reveal>
+              </li>
+            </ul>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+              {SMALL_FEATURES.map(({ icon: Icon, title, body }, i) => (
+                <Reveal
+                  key={title}
+                  delay={i * 120}
+                  className={cn(
+                    "h-full",
+                    i === SMALL_FEATURES.length - 1 && "col-span-2 md:col-span-1",
+                  )}
+                >
+                  <article
+                    className={cn(CARD_HOVER, "group h-full rounded-3xl border bg-card p-4 sm:p-6")}
                   >
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rakamin-light-cyan text-primary transition-colors group-hover:bg-rakamin-yellow group-hover:text-rakamin-charcoal">
                       <Icon className="h-5 w-5" />
@@ -579,7 +610,7 @@ export default function LandingPage() {
         </section>
 
         {/* Candidates */}
-        <section id="candidates" className="scroll-mt-8 mx-auto max-w-5xl px-4 py-20">
+        <section id="candidates" className="scroll-mt-8 mx-auto max-w-5xl px-4 py-14 sm:py-20">
           <div className="grid items-center gap-10 md:grid-cols-2">
             <Reveal>
               <Eyebrow>For candidates</Eyebrow>
