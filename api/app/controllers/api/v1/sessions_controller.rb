@@ -146,10 +146,11 @@ module Api
         end
 
         json_response(
-          session_id:      session.id,
-          role_title:      assessment.name,
-          time_limit_min:  assessment.time_limit_min,
-          session_status:  session.status
+          session_id:       session.id,
+          role_title:       assessment.name,
+          time_limit_min:   assessment.time_limit_min,
+          session_status:   session.status,
+          in_use_elsewhere: Sessions::ClientClaim.new(session).claimed_by_other?(params[:client_id])
         )
       end
 
