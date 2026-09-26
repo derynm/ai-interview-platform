@@ -66,4 +66,24 @@ describe("OverridePanel", () => {
     await user.click(screen.getByText("L2"));
     expect(screen.getByRole("button", { name: "Save override" })).toBeEnabled();
   });
+
+  it("shows the AI level beside a saved override", () => {
+    render(
+      <OverridePanel
+        skill={skill(3)}
+        existingOverride={{
+          id: 1,
+          portfolio_skill_id: 9,
+          ai_level: 3,
+          override_level: 4,
+          assessor_notes: "",
+        }}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("L3")).toBeInTheDocument();
+    expect(screen.getByText("L4")).toBeInTheDocument();
+    expect(screen.getByText("Overridden by you")).toBeInTheDocument();
+  });
 });
