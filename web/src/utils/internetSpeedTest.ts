@@ -23,7 +23,12 @@ export const DEFAULT_THRESHOLDS: SpeedThresholds = {
 };
 
 const SPEED_TEST_PING_URL = import.meta.env.VITE_SPEED_TEST_PING_URL as string | undefined;
-const SPEED_TEST_UPLOAD_URL = import.meta.env.VITE_SPEED_TEST_UPLOAD_URL as string | undefined;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string | undefined;
+// Upload to our own API, the path interview audio takes. Public echo services (httpbin) send the
+// payload back and are far from candidates, so they under-report upload speed.
+const SPEED_TEST_UPLOAD_URL =
+  (import.meta.env.VITE_SPEED_TEST_UPLOAD_URL as string | undefined) ||
+  (API_BASE_URL && `${API_BASE_URL}/speed_test`);
 
 // A hung third-party endpoint must count as a failed sample, not stall the check.
 const FETCH_TIMEOUT_MS = 5000;
@@ -96,26 +101,21 @@ async function measureDownloadSpeed(): Promise<number> {
 }
 
 async function measureUploadSpeed(): Promise<number> {
+  if (!SPEED_TEST_UPLOAD_URL) return 0.5; // not configured: same conservative fallback
   const uploadSizeMB = 0.5;
   const uploadData = new Blob([new ArrayBuffer(uploadSizeMB * 1024 * 1024)], {
     type: "application/octet-stream",
   });
-  const endpoints = SPEED_TEST_UPLOAD_URL
-    ? [SPEED_TEST_UPLOAD_URL]
-    : ["https://httpbin.org/post", "https://www.httpbin.org/post", "https://postman-echo.com/post"];
-  for (const endpoint of endpoints) {
-    try {
-      const formData = new FormData();
-      formData.append("test", uploadData);
-      const start = performance.now();
-      await fetchWithTimeout(endpoint, { method: "POST", body: formData });
-      const seconds = (performance.now() - start) / 1000;
-      return uploadSizeMB / seconds;
-    } catch {
-      continue;
-    }
+  try {
+    const formData = new FormData();
+    formData.append("test", uploadData);
+    const start = performance.now();
+    await fetchWithTimeout(SPEED_TEST_UPLOAD_URL, { method: "POST", body: formData });
+    const seconds = (performance.now() - start) / 1000;
+    return uploadSizeMB / seconds;
+  } catch {
+    return 0.5; // conservative fallback
   }
-  return 0.5; // conservative fallback
 }
 
 async function runMultipleTests<T>(testFn: () => Promise<T>, count = 3): Promise<T[]> {
