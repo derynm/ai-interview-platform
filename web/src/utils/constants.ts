@@ -1,10 +1,13 @@
 export const TIME_LIMIT_OPTIONS = [10, 30, 45, 60, 90] as const;
 
-/** Parse "L3" → 3, passthrough number, fallback to 1 */
-export function parseLevel(level: string | number): number {
-  if (typeof level === "number") return level;
-  const n = parseInt(level.replace(/\D/g, ""), 10);
-  return isNaN(n) ? 1 : n;
+/**
+ * Parse 3 or "L3" → 3. Anything outside L1–L5 returns null: a missing or malformed rating
+ * must be shown as unrated, never converted into a low level.
+ */
+export function parseLevel(level: string | number | null | undefined): number | null {
+  const n =
+    typeof level === "number" ? level : parseInt(String(level ?? "").replace(/\D/g, ""), 10);
+  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
 }
 
 export const LEVEL_LABELS: Record<number, string> = {
