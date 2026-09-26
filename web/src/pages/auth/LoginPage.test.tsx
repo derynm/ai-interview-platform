@@ -43,6 +43,19 @@ describe("LoginPage", () => {
     await submit();
 
     expect(await screen.findByText("Invalid email or password.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Password")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("links back to the landing page and offers no self-registration", () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: /Back to home/ })).toHaveAttribute("href", "/");
+    expect(screen.queryByRole("link", { name: /sign up|register|create account/i })).toBeNull();
   });
 
   it("reports a connection problem instead of blaming the password", async () => {
@@ -51,5 +64,6 @@ describe("LoginPage", () => {
 
     expect(await screen.findByText(NETWORK_ERROR_MESSAGE)).toBeInTheDocument();
     expect(screen.queryByText("Invalid email or password.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).not.toHaveAttribute("aria-invalid");
   });
 });
