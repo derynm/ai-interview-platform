@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AxiosError, AxiosHeaders } from "axios";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import FitGapReportPage from "@/pages/fitgap/FitGapReportPage";
 import { sessionsApi } from "@/services/sessions";
@@ -84,5 +84,32 @@ describe("FitGapReportPage", () => {
 
     expect(await screen.findByText("Failed to load the fit/gap report.")).toBeInTheDocument();
     expect(portfoliosApi.triggerFitGap).not.toHaveBeenCalled();
+  });
+});
+
+describe("FitGapReportPage generation polling", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("stops polling after 10 minutes and says the report is taking too long", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    mockPortfolio(portfolio("complete"));
+    vi.mocked(portfoliosApi.getFitGap).mockReset().mockRejectedValue(httpError(404));
+    vi.mocked(portfoliosApi.triggerFitGap)
+      .mockReset()
+      .mockResolvedValue({
+        data: { status: "generating", message: "queued" },
+      } as Awaited<ReturnType<typeof portfoliosApi.triggerFitGap>>);
+    renderPage();
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(screen.getByText("Generating fit/gap report...")).toBeInTheDocument();
+
+    await act(() => vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 5000));
+
+    expect(screen.getByText(/taking longer than expected/)).toBeInTheDocument();
+    const callsAtTimeout = vi.mocked(portfoliosApi.getFitGap).mock.calls.length;
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+    expect(portfoliosApi.getFitGap).toHaveBeenCalledTimes(callsAtTimeout);
   });
 });
