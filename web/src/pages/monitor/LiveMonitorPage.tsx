@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import TranscriptBubble from "@/components/interview/TranscriptBubble";
+import LoadError from "@/components/LoadError";
 import { useCoverageWebSocket } from "@/hooks/useCoverageWebSocket";
 import { sessionsApi } from "@/services/sessions";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
 import {
   COVERAGE_STATE_LABELS,
   COVERAGE_STATE_WIDTH,
@@ -56,15 +58,15 @@ export default function LiveMonitorPage() {
   const [assessmentName, setAssessmentName] = useState<string>("");
   const [transcript, setTranscript] = useState<TranscriptTurn[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
   const [endError, setEndError] = useState(false);
   const [sessionActive, setSessionActive] = useState(true);
   const lastTurnRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { coverageMap, sessionEnded, sessionEndReason, isConnected } = useCoverageWebSocket(
-    Number(sessionId),
-  );
+  const { coverageMap, sessionEnded, sessionEndReason, isConnected, connectionFailed, reconnect } =
+    useCoverageWebSocket(Number(sessionId));
 
   // On session_ended from WS — stop polling, update local state
   useEffect(() => {
@@ -75,7 +77,9 @@ export default function LiveMonitorPage() {
   }, [sessionEnded]);
 
   // Initial load
-  useEffect(() => {
+  const loadSession = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
     Promise.all([sessionsApi.get(Number(sessionId)), sessionsApi.getTranscript(Number(sessionId))])
       .then(([sRes, tRes]) => {
         const s = sRes.data.session;
@@ -89,8 +93,19 @@ export default function LiveMonitorPage() {
           lastTurnRef.current = turns[turns.length - 1].turn_number;
         }
       })
+      .catch((requestError: unknown) =>
+        setLoadError(
+          getApiErrorStatus(requestError) === 404
+            ? "This session doesn't exist or was deleted."
+            : getApiErrorMessage(requestError, "Failed to load the session."),
+        ),
+      )
       .finally(() => setLoading(false));
   }, [sessionId]);
+
+  useEffect(() => {
+    loadSession();
+  }, [loadSession]);
 
   // Poll transcript every 3s while session is active
   const fetchNewTurns = useCallback(async () => {
@@ -106,12 +121,12 @@ export default function LiveMonitorPage() {
   }, [sessionId]);
 
   useEffect(() => {
-    if (!sessionActive || loading) return;
+    if (!sessionActive || loading || loadError) return;
     pollTimerRef.current = setInterval(fetchNewTurns, 3000);
     return () => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
-  }, [sessionActive, loading, fetchNewTurns]);
+  }, [sessionActive, loading, loadError, fetchNewTurns]);
 
   const handleEndSession = async () => {
     setEnding(true);
@@ -130,6 +145,20 @@ export default function LiveMonitorPage() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <Link
+          to={`/assessments/${id}/invite`}
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Back to assessment
+        </Link>
+        <LoadError message={loadError} onRetry={loadSession} />
       </div>
     );
   }
@@ -156,15 +185,24 @@ export default function LiveMonitorPage() {
 
         <div className="flex items-center gap-3">
           {startedAt && sessionActive && <ElapsedTimer startedAt={startedAt} />}
-          <span
-            className={cn(
-              "flex items-center gap-1 text-xs",
-              isConnected ? "text-green-600" : "text-muted-foreground",
-            )}
-          >
-            <Radio className="h-3 w-3" />
-            {isConnected ? "Live" : "Reconnecting..."}
-          </span>
+          {connectionFailed && !sessionEnded ? (
+            <span className="flex items-center gap-2 text-xs text-destructive">
+              Live updates disconnected
+              <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={reconnect}>
+                Reconnect
+              </Button>
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "flex items-center gap-1 text-xs",
+                isConnected ? "text-green-600" : "text-muted-foreground",
+              )}
+            >
+              <Radio className="h-3 w-3" />
+              {isConnected ? "Live" : "Reconnecting..."}
+            </span>
+          )}
         </div>
       </div>
 
