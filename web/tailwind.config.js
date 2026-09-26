@@ -69,11 +69,22 @@ export default {
           "0%, 100%": { height: "4px" },
           "50%": { height: "32px" },
         },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+        // Pair with pathLength="1" and stroke-dasharray: 1 to draw an SVG stroke in.
+        draw: {
+          from: { strokeDashoffset: "1" },
+          to: { strokeDashoffset: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "voice-bar": "voice-bar 0.8s ease-in-out infinite",
+        float: "float 6s ease-in-out infinite",
+        draw: "draw 0.9s ease-out 0.7s both",
       },
     },
   },
