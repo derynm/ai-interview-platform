@@ -3,9 +3,15 @@ import { cn } from "@/lib/utils";
 interface TranscriptBubbleProps {
   speaker: "candidate" | "assessor" | "system" | "ai";
   text: string;
+  // The candidate sees their own turns as "You"; assessors need to see "Candidate".
+  candidateLabel?: string;
 }
 
-export default function TranscriptBubble({ speaker, text }: TranscriptBubbleProps) {
+export default function TranscriptBubble({
+  speaker,
+  text,
+  candidateLabel = "You",
+}: TranscriptBubbleProps) {
   const isCandidate = speaker === "candidate";
 
   return (
@@ -17,7 +23,7 @@ export default function TranscriptBubble({ speaker, text }: TranscriptBubbleProp
         )}
       >
         <span className="block text-xs font-medium mb-0.5 text-muted-foreground">
-          {isCandidate ? "You" : "AI"}
+          {isCandidate ? candidateLabel : "AI"}
         </span>
         {text}
       </div>

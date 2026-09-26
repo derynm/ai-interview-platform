@@ -316,7 +316,12 @@ export default function LiveMonitorPage() {
           ) : (
             <div className="space-y-2">
               {transcript.map((turn) => (
-                <TranscriptBubble key={turn.id} speaker={turn.speaker} text={turn.text} />
+                <TranscriptBubble
+                  key={turn.id}
+                  speaker={turn.speaker}
+                  text={turn.text}
+                  candidateLabel="Candidate"
+                />
               ))}
             </div>
           )}
