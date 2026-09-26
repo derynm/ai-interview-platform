@@ -14,6 +14,7 @@ import {
   isBrowserSupported,
 } from "@/utils/hardwareUtils";
 import { Button } from "@/components/ui/button";
+import Notice from "@/components/Notice";
 import { RefreshCw, CheckCircle, XCircle, Loader2, Circle } from "lucide-react";
 
 interface HardwareCheckProps {
@@ -23,7 +24,7 @@ interface HardwareCheckProps {
 function StateIcon({ state }: { state: ProctoringState }) {
   if (state === ProctoringState.LOADING)
     return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
-  if (state === ProctoringState.PASSED) return <CheckCircle className="h-4 w-4 text-green-500" />;
+  if (state === ProctoringState.PASSED) return <CheckCircle className="h-4 w-4 text-green-700" />;
   if (state === ProctoringState.ERROR) return <XCircle className="h-4 w-4 text-destructive" />;
   return <Circle className="h-4 w-4 text-muted-foreground/40" />;
 }
@@ -230,7 +231,7 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
   const hasError = Object.values(progress).some((s) => s === ProctoringState.ERROR);
 
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
+    <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
       {/* Camera preview */}
       {REQUIRE_CAMERA && (
         <div className="relative bg-black aspect-video">
@@ -266,7 +267,7 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
       {/* Checklist */}
       <div className="divide-y">
         {rows.map(({ key, label }) => (
-          <div key={key} className="px-4 py-3">
+          <div key={key} className="px-5 py-3.5">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{label}</span>
               <div className="flex items-center gap-2">
@@ -274,7 +275,7 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
                 <span
                   className={`text-xs w-16 text-right ${
                     progress[key] === ProctoringState.PASSED
-                      ? "text-green-600"
+                      ? "text-green-700"
                       : progress[key] === ProctoringState.ERROR
                         ? "text-destructive"
                         : "text-muted-foreground"
@@ -286,7 +287,9 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
             </div>
 
             {progress[key] === ProctoringState.ERROR && (
-              <p className="mt-1.5 text-xs text-destructive">{FAILURE_HINTS[key]}</p>
+              <Notice variant="error" className="mt-2 text-xs">
+                {FAILURE_HINTS[key]}
+              </Notice>
             )}
 
             {/* Internet speed details */}
@@ -295,7 +298,7 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
                 <span
                   className={
                     internetResult.download >= thresholds.minDownloadMbps
-                      ? "text-green-600"
+                      ? "text-green-700"
                       : "text-destructive"
                   }
                 >
@@ -304,7 +307,7 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
                 <span
                   className={
                     internetResult.upload >= thresholds.minUploadMbps
-                      ? "text-green-600"
+                      ? "text-green-700"
                       : "text-destructive"
                   }
                 >
@@ -313,7 +316,7 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
                 <span
                   className={
                     internetResult.ping <= thresholds.maxPingMs
-                      ? "text-green-600"
+                      ? "text-green-700"
                       : "text-destructive"
                   }
                 >
@@ -327,7 +330,7 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
               <div className="mt-2 flex items-center gap-2">
                 <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
                   <div
-                    className="h-full bg-green-500 transition-all duration-150"
+                    className="h-full bg-rakamin-teal transition-all duration-150"
                     style={{ width: `${Math.min(audioLevel * 2, 100)}%` }}
                   />
                 </div>
@@ -339,10 +342,10 @@ const HardwareCheck: React.FC<HardwareCheckProps> = ({ onStart }) => {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t flex items-center justify-between gap-3 bg-muted/30">
+      <div className="flex items-center justify-between gap-3 border-t bg-rakamin-light-cyan/40 px-5 py-4">
         {hasError && (
           <Button variant="outline" size="sm" onClick={retryAll}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            <RefreshCw />
             Retry
           </Button>
         )}
