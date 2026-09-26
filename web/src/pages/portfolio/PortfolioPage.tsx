@@ -11,23 +11,36 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import SkillPortfolioCard from "@/components/portfolio/SkillPortfolioCard";
+import LoadError from "@/components/LoadError";
 import { sessionsApi } from "@/services/sessions";
 import { vacanciesApi } from "@/services/vacancies";
 import { portfoliosApi } from "@/services/portfolios";
 import { usePolling } from "@/hooks/usePolling";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
+import { downloadBlob } from "@/utils/download";
 import { ArrowLeft, Download, Loader2, RefreshCw, Zap, FileText } from "lucide-react";
 import type { Portfolio, AssessorOverride, Vacancy } from "@/types";
+
+// Generation normally takes ~2 minutes; stop polling well past that so a stuck job is visible.
+const GENERATION_TIMEOUT_MS = 10 * 60 * 1000;
 
 export default function PortfolioPage() {
   const { id, sessionId } = useParams<{ id: string; sessionId: string }>();
   const navigate = useNavigate();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [generationStartedAt, setGenerationStartedAt] = useState<number | null>(null);
+  const [generationTimedOut, setGenerationTimedOut] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<number, AssessorOverride>>({});
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
+  const [vacanciesError, setVacanciesError] = useState(false);
   const [selectedVacancy, setSelectedVacancy] = useState<string>("");
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const [candidateName, setCandidateName] = useState<string | null>(null);
 
   const fetchPortfolio = useCallback(async () => {
@@ -40,6 +53,7 @@ export default function PortfolioPage() {
           data.portfolio.generation_status === "pending"))
     ) {
       setGenerating(true);
+      setGenerationStartedAt((startedAt) => startedAt ?? Date.now());
     } else if ("portfolio" in data) {
       setPortfolio(data.portfolio);
       setGenerating(false);
@@ -52,18 +66,67 @@ export default function PortfolioPage() {
     }
   }, [sessionId]);
 
-  useEffect(() => {
-    Promise.all([fetchPortfolio(), vacanciesApi.list(), sessionsApi.get(Number(sessionId))])
-      .then(([, vRes, sRes]) => {
+  const loadPage = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
+    // Vacancies only feed the fit/gap picker; their failure must not hide the results.
+    vacanciesApi
+      .list()
+      .then((vRes) => {
         setVacancies(vRes.data.vacancies);
-        setCandidateName(sRes.data.session.candidate_name ?? null);
+        setVacanciesError(false);
       })
-      .catch(() => {})
+      .catch(() => setVacanciesError(true));
+    Promise.all([fetchPortfolio(), sessionsApi.get(Number(sessionId))])
+      .then(([, sRes]) => setCandidateName(sRes.data.session.candidate_name ?? null))
+      .catch((requestError: unknown) =>
+        setLoadError(
+          getApiErrorStatus(requestError) === 404
+            ? "This session doesn't exist or was deleted."
+            : getApiErrorMessage(requestError, "Failed to load the portfolio."),
+        ),
+      )
       .finally(() => setLoading(false));
   }, [fetchPortfolio, sessionId]);
 
-  // Poll while generating
-  usePolling(fetchPortfolio, 5000, generating);
+  useEffect(() => {
+    loadPage();
+  }, [loadPage]);
+
+  const pollPortfolio = useCallback(async () => {
+    if (generationStartedAt && Date.now() - generationStartedAt > GENERATION_TIMEOUT_MS) {
+      setGenerationTimedOut(true);
+      return;
+    }
+    try {
+      await fetchPortfolio();
+    } catch {
+      // Transient poll failure — try again on the next interval.
+    }
+  }, [fetchPortfolio, generationStartedAt]);
+
+  usePolling(pollPortfolio, 5000, generating && !generationTimedOut);
+
+  const checkAgain = () => {
+    setGenerationTimedOut(false);
+    setGenerationStartedAt(Date.now());
+    pollPortfolio();
+  };
+
+  const handleRetryGeneration = async () => {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      await sessionsApi.regeneratePortfolio(Number(sessionId));
+      setGenerationTimedOut(false);
+      setGenerationStartedAt(Date.now());
+      setGenerating(true);
+    } catch (requestError: unknown) {
+      setRetryError(getApiErrorMessage(requestError, "Failed to restart generation."));
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const handleOverrideSaved = (skillId: number, override: AssessorOverride) => {
     setOverrides((prev) => ({ ...prev, [skillId]: override }));
@@ -77,29 +140,20 @@ export default function PortfolioPage() {
   const handleExport = async (format: "pdf" | "json") => {
     if (!portfolio) return;
     setExporting(format);
+    setExportError(null);
     try {
       const res = await portfoliosApi.exportPortfolio(
         portfolio.id,
         format,
         selectedVacancy ? Number(selectedVacancy) : undefined,
       );
-      if (format === "json") {
-        const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `portfolio-${sessionId}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        const blob = new Blob([res.data as BlobPart], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `portfolio-${sessionId}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
+      const blob =
+        format === "json"
+          ? new Blob([JSON.stringify(res.data, null, 2)], { type: "application/json" })
+          : new Blob([res.data as BlobPart], { type: "application/pdf" });
+      downloadBlob(blob, `portfolio-${sessionId}.${format}`);
+    } catch (requestError: unknown) {
+      setExportError(getApiErrorMessage(requestError, "Export failed. Please try again."));
     } finally {
       setExporting(null);
     }
@@ -111,6 +165,20 @@ export default function PortfolioPage() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <Link
+          to={`/assessments/${id}/invite`}
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Back to assessment
+        </Link>
+        <LoadError message={loadError} onRetry={loadPage} />
       </div>
     );
   }
@@ -173,8 +241,23 @@ export default function PortfolioPage() {
         </div>
       </div>
 
+      {exportError && <p className="text-sm text-destructive">{exportError}</p>}
+
+      {/* Generation is taking far longer than expected */}
+      {generating && generationTimedOut && (
+        <div className="border border-amber-300 rounded-lg p-6 text-center space-y-3">
+          <p className="text-sm">
+            Portfolio generation is taking longer than expected. It may still finish, or the job may
+            be stuck.
+          </p>
+          <Button variant="outline" size="sm" onClick={checkAgain}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Check again
+          </Button>
+        </div>
+      )}
+
       {/* Generating state */}
-      {generating && (
+      {generating && !generationTimedOut && (
         <div className="border rounded-lg p-12 text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
           <div>
@@ -190,15 +273,14 @@ export default function PortfolioPage() {
       {!generating && portfolio?.generation_status === "failed" && (
         <div className="border border-destructive/40 rounded-lg p-6 text-center space-y-3">
           <p className="text-sm text-destructive">Portfolio generation failed.</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              await sessionsApi.regeneratePortfolio(Number(sessionId));
-              setGenerating(true);
-            }}
-          >
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+          {retryError && <p className="text-xs text-destructive">{retryError}</p>}
+          <Button variant="outline" size="sm" onClick={handleRetryGeneration} disabled={retrying}>
+            {retrying ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            Retry
           </Button>
         </div>
       )}
@@ -252,23 +334,37 @@ export default function PortfolioPage() {
           <Separator />
 
           {/* Fit/Gap */}
-          <div className="flex items-center gap-3">
-            <Select value={selectedVacancy} onValueChange={setSelectedVacancy}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Choose vacancy..." />
-              </SelectTrigger>
-              <SelectContent>
-                {vacancies.map((v) => (
-                  <SelectItem key={v.id} value={String(v.id)}>
-                    {v.role_title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleRunFitGap} disabled={!selectedVacancy}>
-              Run Fit/Gap Analysis →
-            </Button>
-          </div>
+          {vacanciesError ? (
+            <p className="text-sm text-destructive">
+              Couldn't load vacancies for fit/gap analysis. Refresh the page to try again.
+            </p>
+          ) : vacancies.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              To run a fit/gap analysis,{" "}
+              <Link to="/vacancies/new" className="text-primary hover:underline">
+                create a vacancy
+              </Link>{" "}
+              first.
+            </p>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Select value={selectedVacancy} onValueChange={setSelectedVacancy}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Choose vacancy..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {vacancies.map((v) => (
+                    <SelectItem key={v.id} value={String(v.id)}>
+                      {v.role_title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={handleRunFitGap} disabled={!selectedVacancy}>
+                Run Fit/Gap Analysis →
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>
