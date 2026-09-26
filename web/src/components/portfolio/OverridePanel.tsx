@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import LevelRadio from "@/components/assessment/LevelRadio";
 import LevelBadge from "./LevelBadge";
 import { portfoliosApi } from "@/services/portfolios";
-import { Loader2, Pencil } from "lucide-react";
+import Notice from "@/components/Notice";
+import { ChevronDown, Loader2, Pencil } from "lucide-react";
 import { parseLevel } from "@/utils/constants";
 import { getApiErrorMessage } from "@/lib/apiError";
 import type { PortfolioSkill, AssessorOverride } from "@/types";
@@ -56,7 +57,7 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
 
   if (!open) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {hasOverride ? (
           <>
             <div className="flex items-center gap-1.5 text-sm">
@@ -64,15 +65,17 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
               <span className="text-muted-foreground text-xs">AI</span>
               <span className="text-muted-foreground">→</span>
               <LevelBadge level={existingOverride!.override_level} size="sm" />
-              <span className="text-xs text-green-600 font-medium">You Overridden ✓</span>
+              <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-800">
+                Overridden by you
+              </span>
             </div>
             <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-              <Pencil className="h-3 w-3 mr-1" /> Edit override
+              <Pencil /> Edit override
             </Button>
           </>
         ) : (
           <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-            Override rating ▼
+            Override rating <ChevronDown />
           </Button>
         )}
       </div>
@@ -80,8 +83,8 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
   }
 
   return (
-    <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="w-full space-y-4 rounded-2xl border bg-rakamin-light-cyan/40 p-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-rakamin-teal">
         Override
       </div>
 
@@ -103,14 +106,14 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
         />
       </div>
 
-      {saveError && <p className="text-xs text-destructive">{saveError}</p>}
+      {saveError && <Notice variant="error">{saveError}</Notice>}
 
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={handleCancel}>
           Cancel
         </Button>
         <Button size="sm" onClick={handleSave} disabled={saving || overrideLevel === null}>
-          {saving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+          {saving && <Loader2 className="animate-spin" />}
           Save override
         </Button>
       </div>
