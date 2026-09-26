@@ -6,8 +6,14 @@ const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL ?? "ws://localhost:3000";
 
 export const WS_URL = WS_BASE_URL;
 
+// A hung request must end in an error state instead of an endless spinner.
+const REQUEST_TIMEOUT_MS = 30_000;
+
+const LOGIN_PATH = "/auth/login";
+
 export const api = axios.create({
   baseURL: BASE_URL,
+  timeout: REQUEST_TIMEOUT_MS,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -27,7 +33,9 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    // A rejected sign-in is reported by the login form itself; reloading /login would erase it.
+    const isLoginRequest = error.config?.url === LOGIN_PATH;
+    if (!isLoginRequest && (error.response?.status === 401 || error.response?.status === 403)) {
       clearToken();
       window.location.href = "/login";
     }
