@@ -280,7 +280,7 @@ export default function AssessmentInvitePage() {
                 <>New invite link ready — share with your candidate:</>
               )}
             </p>
-            <div className="flex items-center gap-2 border rounded-md px-3 py-2 bg-white">
+            <div className="flex items-center gap-2 border rounded-md px-3 py-2 bg-card">
               <span className="flex-1 text-sm font-mono truncate text-muted-foreground">
                 {newSession.invite_url}
               </span>
