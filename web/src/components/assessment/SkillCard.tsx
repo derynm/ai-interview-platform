@@ -2,9 +2,9 @@ import { useState } from "react";
 import { UseFormReturn, useWatch } from "react-hook-form";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, ChevronDown, ChevronRight } from "lucide-react";
+import { GripVertical, X, ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import LevelRadio from "./LevelRadio";
-import CustomSkillForm from "./CustomSkillForm";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AssessmentFormValues } from "@/pages/assessments/AssessmentNewPage";
 
@@ -13,9 +13,10 @@ interface SkillCardProps {
   id: string;
   form: UseFormReturn<AssessmentFormValues>;
   onRemove: () => void;
+  onEditCustom?: () => void;
 }
 
-export default function SkillCard({ index, id, form, onRemove }: SkillCardProps) {
+export default function SkillCard({ index, id, form, onRemove, onEditCustom }: SkillCardProps) {
   const [anchorsOpen, setAnchorsOpen] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
@@ -76,11 +77,19 @@ export default function SkillCard({ index, id, form, onRemove }: SkillCardProps)
 
       {/* Card body */}
       <div className="space-y-3 px-4 pb-4">
-        {isCustom ? (
-          <CustomSkillForm index={index} form={form} />
-        ) : (
+        <div className="space-y-3">
+          {isCustom && (
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <p className="max-w-xl text-xs text-muted-foreground">{skill?.scope_include}</p>
+              {onEditCustom && (
+                <Button type="button" variant="ghost" size="sm" onClick={onEditCustom}>
+                  <Pencil /> Edit
+                </Button>
+              )}
+            </div>
+          )}
+
           <div className="space-y-3">
-            {/* B7 skill: show anchors toggle */}
             <button
               type="button"
               onClick={() => setAnchorsOpen((o) => !o)}
@@ -118,7 +127,7 @@ export default function SkillCard({ index, id, form, onRemove }: SkillCardProps)
               />
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

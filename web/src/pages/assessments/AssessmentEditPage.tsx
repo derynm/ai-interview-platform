@@ -28,6 +28,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import SkillCard from "@/components/assessment/SkillCard";
 import SkillPicker from "@/components/assessment/SkillPicker";
+import CustomSkillDialog from "@/components/assessment/CustomSkillDialog";
 import FieldError from "@/components/FieldError";
 import LoadError from "@/components/LoadError";
 import EmptyState from "@/components/EmptyState";
@@ -42,6 +43,7 @@ import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
 import { MAX_TEXT_FIELD_LENGTH, requiredText } from "@/utils/validation";
 import { TIME_LIMIT_OPTIONS } from "@/utils/constants";
 import type { AssessmentFormValues } from "./AssessmentNewPage";
+import type { AssessmentSkill } from "@/types";
 
 export default function AssessmentEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +51,11 @@ export default function AssessmentEditPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [customSkillOpen, setCustomSkillOpen] = useState(false);
+  const [editingCustomSkill, setEditingCustomSkill] = useState<{
+    index: number;
+    skill: Partial<AssessmentSkill>;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   // Saved skills the assessor removed; the API only deletes nested rows marked _destroy.
@@ -68,7 +75,7 @@ export default function AssessmentEditPage() {
     reset,
     formState: { errors, isDirty },
   } = form;
-  const { fields, append, remove, move } = useFieldArray({ control, name: "skills" });
+  const { fields, append, remove, move, update } = useFieldArray({ control, name: "skills" });
   const { blocker, allowNavigation } = useUnsavedChangesGuard(isDirty);
 
   const loadAssessment = useCallback(() => {
@@ -104,6 +111,25 @@ export default function AssessmentEditPage() {
     const savedId = getValues(`skills.${index}.id`);
     if (savedId) setRemovedSkillIds((prev) => [...prev, savedId]);
     remove(index);
+  };
+
+  const openNewCustomSkill = () => {
+    setEditingCustomSkill(null);
+    setCustomSkillOpen(true);
+  };
+
+  const openCustomSkillEditor = (index: number) => {
+    setEditingCustomSkill({ index, skill: getValues(`skills.${index}`) });
+    setCustomSkillOpen(true);
+  };
+
+  const saveCustomSkill = (skill: Partial<AssessmentSkill>) => {
+    if (editingCustomSkill) {
+      update(editingCustomSkill.index, skill);
+      return;
+    }
+
+    append({ ...skill, display_order: fields.length });
   };
 
   const sensors = useSensors(
@@ -254,6 +280,7 @@ export default function AssessmentEditPage() {
                       index={index}
                       form={form}
                       onRemove={() => removeSkill(index)}
+                      onEditCustom={() => openCustomSkillEditor(index)}
                     />
                   ))}
                 </div>
@@ -264,19 +291,7 @@ export default function AssessmentEditPage() {
             <Button type="button" variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
               <Plus /> Add from B7 taxonomy
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                append({
-                  skill_label: "",
-                  is_custom: true,
-                  expected_level: 3,
-                  display_order: fields.length,
-                })
-              }
-            >
+            <Button type="button" variant="outline" size="sm" onClick={openNewCustomSkill}>
               <Plus /> Add custom skill
             </Button>
           </div>
@@ -306,6 +321,13 @@ export default function AssessmentEditPage() {
         onOpenChange={setPickerOpen}
         onSelect={(s) => append({ ...s, display_order: fields.length })}
         addedLabels={watch("skills").map((s) => s.skill_label ?? "")}
+      />
+
+      <CustomSkillDialog
+        open={customSkillOpen}
+        onOpenChange={setCustomSkillOpen}
+        onSave={saveCustomSkill}
+        skill={editingCustomSkill?.skill}
       />
     </div>
   );

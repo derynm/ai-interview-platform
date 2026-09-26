@@ -51,7 +51,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:?}
       REDIS_URL: redis://redis:6379/1
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3001}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5173}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_LIVE_MODEL: ${GEMINI_LIVE_MODEL:-gemini-2.0-flash-live-001}
       GEMINI_FLASH_MODEL: ${GEMINI_FLASH_MODEL:-gemini-2.0-flash-001}
@@ -104,7 +104,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:?}
       REDIS_URL: redis://redis:6379/1
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3001}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5173}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_LIVE_MODEL: ${GEMINI_LIVE_MODEL:-gemini-2.0-flash-live-001}
       GEMINI_FLASH_MODEL: ${GEMINI_FLASH_MODEL:-gemini-2.0-flash-001}

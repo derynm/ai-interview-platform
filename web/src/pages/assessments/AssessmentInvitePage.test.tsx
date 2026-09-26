@@ -16,7 +16,7 @@ const pendingSession: Session = {
   id: 4,
   assessment_id: 7,
   invite_token: "tok",
-  invite_url: "http://localhost:5173/interview/tok",
+  invite_url: "http://localhost:3001/interview/tok",
   status: "ended",
 };
 
@@ -89,10 +89,48 @@ describe("AssessmentInvitePage", () => {
     renderPage();
 
     await user.click(await screen.findByRole("button", { name: /Invite Candidate/ }));
+    await user.type(screen.getByLabelText(/Candidate name/), "Budi Santoso");
     await user.click(screen.getByRole("button", { name: "Create Link" }));
 
     expect(await screen.findByText("Assessment has no skills")).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("requires a non-blank candidate name before creating an invite", async () => {
+    mockLoaded();
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /Invite Candidate/ }));
+    const candidateName = screen.getByLabelText(/Candidate name/);
+    await user.type(candidateName, "   ");
+    await user.click(screen.getByRole("button", { name: "Create Link" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Candidate name is required");
+    expect(candidateName).toHaveAttribute("aria-invalid", "true");
+    expect(assessmentsApi.createSession).not.toHaveBeenCalled();
+  });
+
+  it("trims the candidate name when creating an invite", async () => {
+    mockLoaded();
+    vi.mocked(assessmentsApi.createSession).mockResolvedValue({
+      data: { session: { ...pendingSession, candidate_name: "Budi Santoso" } },
+    } as Awaited<ReturnType<typeof assessmentsApi.createSession>>);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /Invite Candidate/ }));
+    await user.type(screen.getByLabelText(/Candidate name/), "  Budi Santoso  ");
+    await user.click(screen.getByRole("button", { name: "Create Link" }));
+
+    await waitFor(() =>
+      expect(assessmentsApi.createSession).toHaveBeenCalledWith(7, "Budi Santoso"),
+    );
+    expect(await screen.findByRole("dialog", { name: "Invite link ready" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Interview link")).toHaveValue(
+      `${window.location.origin}/interview/tok`,
+    );
+    expect(screen.queryByText(/Link for .* ready/)).not.toBeInTheDocument();
   });
 
   it("says the copy failed when the clipboard is unavailable", async () => {
