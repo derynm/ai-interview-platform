@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import VoiceBars from "@/components/interview/VoiceBars";
+import VoiceOrb, { type VoiceOrbMode } from "@/components/interview/VoiceOrb";
 import InterviewTimer from "@/components/interview/InterviewTimer";
 import ConnectionStatus from "@/components/interview/ConnectionStatus";
 import TranscriptBubble from "@/components/interview/TranscriptBubble";
@@ -34,9 +34,11 @@ import {
   Lock,
   Mic,
   MicOff,
+  PhoneOff,
   RefreshCw,
   WifiOff,
   X,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import type { CandidateInfo, InterviewState, InterviewSpeaker, TranscriptTurn } from "@/types";
@@ -100,6 +102,7 @@ export default function InterviewPage() {
   const reconnectedPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionLostTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [micMuted, setMicMuted] = useState(false);
+  const transcriptRef = useRef<HTMLDivElement>(null);
   const micMutedRef = useRef(false);
 
   // Fetch candidate info. A failure must never look like a finished interview.
@@ -214,6 +217,12 @@ export default function InterviewPage() {
     if (code === "session_in_use") setInUseElsewhere(true);
     else setSessionFailed(true);
   }, []);
+
+  // Keep the newest turn in view as the conversation grows.
+  useEffect(() => {
+    const el = transcriptRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [transcript]);
 
   const handleTranscript = useCallback((turn: Pick<TranscriptTurn, "speaker" | "text">) => {
     setTranscript((prev) => [...prev.slice(-9), turn]); // keep last 10
@@ -436,8 +445,20 @@ export default function InterviewPage() {
   }
 
   // ── States B/C/D/E: Active interview ────────────────────────────────────
-  const aiSpeaking = speaker === "ai";
-  const candidateSpeaking = speaker === "candidate";
+  const orbMode: VoiceOrbMode =
+    interviewState === "connecting"
+      ? "connecting"
+      : interviewState === "draining_audio"
+        ? "wrapping"
+        : interviewState === "reconnecting"
+          ? "waiting"
+          : speaker === "ai"
+            ? "ai"
+            : speaker === "candidate"
+              ? micMuted
+                ? "muted"
+                : "candidate"
+              : "waiting";
 
   return (
     <div className="mx-auto flex h-full w-full max-w-xl flex-col px-4">
@@ -487,62 +508,65 @@ export default function InterviewPage() {
         </Notice>
       )}
 
-      {/* Voice indicator */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 py-8">
-        {interviewState === "connecting" ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" /> Connecting...
-          </div>
-        ) : interviewState === "draining_audio" ? (
-          <div className="flex flex-col items-center gap-2 text-center">
-            <VoiceBars active={true} label="AI speaking" variant="ai" />
-            <p className="text-xs text-muted-foreground">Wrapping up...</p>
-          </div>
-        ) : (
-          <>
-            <VoiceBars
-              active={aiSpeaking}
-              label={aiSpeaking ? "AI speaking" : "Listening..."}
-              variant="ai"
-            />
-
-            {candidateSpeaking && (
-              <VoiceBars active={true} label="You're speaking" variant="candidate" />
-            )}
-
-            {/* Transcript */}
-            {transcript.length > 0 && (
-              <div className="w-full space-y-2 overflow-y-auto max-h-[60vh]">
-                {transcript.map((turn, i) => (
-                  <TranscriptBubble key={i} speaker={turn.speaker} text={turn.text} />
-                ))}
-              </div>
-            )}
-          </>
-        )}
+      {/* One voice at a time: the orb shows whose turn it is */}
+      <div className="flex flex-col items-center py-10">
+        <VoiceOrb mode={orbMode} />
       </div>
 
-      {/* Bottom bar */}
-      <div className="sticky bottom-4 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl border bg-card/90 px-4 py-3 shadow-lg backdrop-blur">
+      {/* Transcript */}
+      {transcript.length > 0 && (
+        <section
+          aria-label="Conversation"
+          className="mb-6 rounded-3xl border bg-card/80 p-4 shadow-sm"
+        >
+          <p className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-rakamin-teal">
+            Conversation
+          </p>
+          <div ref={transcriptRef} className="max-h-[40vh] space-y-2 overflow-y-auto pr-1">
+            {transcript.map((turn, i) => (
+              <TranscriptBubble key={i} speaker={turn.speaker} text={turn.text} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Control dock */}
+      <div className="sticky bottom-4 mb-4 mt-auto flex items-center justify-between gap-3 rounded-full border bg-card/90 py-2.5 pl-4 pr-2.5 shadow-lg backdrop-blur">
         <ConnectionStatus state={wsConnectionStatus} />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant={micMuted ? "destructive" : "outline"} size="sm" onClick={toggleMic}>
-            {micMuted ? (
-              <>
-                <MicOff /> Muted
-              </>
-            ) : (
-              <>
-                <Mic /> Mic On
-              </>
-            )}
+        <div className="flex items-center gap-2">
+          {import.meta.env.DEV && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => sendJson({ type: "debug_force_reconnect" })}
+            >
+              <Zap /> Force reconnect
+            </Button>
+          )}
+          <Button
+            variant={micMuted ? "destructive" : "outline"}
+            size="icon"
+            className="h-12 w-12"
+            aria-label={micMuted ? "Unmute microphone" : "Mute microphone"}
+            aria-pressed={micMuted}
+            title={micMuted ? "Unmute microphone" : "Mute microphone"}
+            onClick={toggleMic}
+          >
+            {micMuted ? <MicOff /> : <Mic />}
           </Button>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                End Interview
+              <Button
+                variant="destructive"
+                size="icon"
+                className="h-12 w-12"
+                aria-label="End interview"
+                title="End interview"
+              >
+                <PhoneOff />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -558,16 +582,6 @@ export default function InterviewPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          {import.meta.env.DEV && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs opacity-50"
-              onClick={() => sendJson({ type: "debug_force_reconnect" })}
-            >
-              ⚡ Force reconnect
-            </Button>
-          )}
         </div>
       </div>
     </div>
