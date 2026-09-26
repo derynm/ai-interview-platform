@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import LevelRadio from "@/components/assessment/LevelRadio";
 import SkillPicker from "@/components/assessment/SkillPicker";
+import FieldError from "@/components/FieldError";
 import { vacanciesApi } from "@/services/vacancies";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { requiredText } from "@/utils/validation";
 import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
 import type { VacancySkill } from "@/types";
 
@@ -26,7 +28,14 @@ export default function VacancyNewPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { register, handleSubmit, control, setValue, watch } = useForm<VacancyFormValues>({
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<VacancyFormValues>({
     defaultValues: {
       role_title: "",
       culture_dimensions: "",
@@ -42,7 +51,7 @@ export default function VacancyNewPage() {
     setSubmitting(true);
     try {
       await vacanciesApi.create({
-        role_title: data.role_title,
+        role_title: data.role_title.trim(),
         culture_dimensions: data.culture_dimensions,
         competency_expectations: data.competency_expectations,
         vacancy_skills_attributes: data.skills,
@@ -74,8 +83,10 @@ export default function VacancyNewPage() {
           <Input
             id="role_title"
             placeholder="Senior Frontend Engineer"
-            {...register("role_title", { required: true })}
+            aria-invalid={!!errors.role_title}
+            {...register("role_title", requiredText("Role title is required"))}
           />
+          <FieldError message={errors.role_title?.message} />
         </div>
 
         <Separator />
@@ -100,6 +111,7 @@ export default function VacancyNewPage() {
                       type="button"
                       onClick={() => remove(index)}
                       className="text-muted-foreground hover:text-destructive"
+                      aria-label="Remove skill"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -164,6 +176,7 @@ export default function VacancyNewPage() {
         onSelect={(s) =>
           append({ skill_id: s.skill_id, skill_label: s.skill_label, expected_level: 3 })
         }
+        addedLabels={watch("skills").map((s) => s.skill_label ?? "")}
       />
     </div>
   );

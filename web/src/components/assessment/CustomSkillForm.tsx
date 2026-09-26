@@ -2,7 +2,9 @@ import { UseFormReturn, useWatch } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import FieldError from "@/components/FieldError";
 import LevelRadio from "./LevelRadio";
+import { requiredText } from "@/utils/validation";
 import type { AssessmentFormValues } from "@/pages/assessments/AssessmentNewPage";
 
 interface CustomSkillFormProps {
@@ -19,8 +21,13 @@ const LEVEL_PLACEHOLDERS: Record<number, string> = {
 };
 
 export default function CustomSkillForm({ index, form }: CustomSkillFormProps) {
-  const { register, setValue } = form;
+  const {
+    register,
+    setValue,
+    formState: { errors },
+  } = form;
   const expectedLevel = useWatch({ control: form.control, name: `skills.${index}.expected_level` });
+  const skillErrors = errors.skills?.[index];
 
   return (
     <div className="space-y-3 pt-1">
@@ -31,8 +38,10 @@ export default function CustomSkillForm({ index, form }: CustomSkillFormProps) {
         <Input
           id={`skills.${index}.skill_label`}
           placeholder="e.g. Communication"
-          {...register(`skills.${index}.skill_label`, { required: true })}
+          aria-invalid={!!skillErrors?.skill_label}
+          {...register(`skills.${index}.skill_label`, requiredText("Skill name is required"))}
         />
+        <FieldError message={skillErrors?.skill_label?.message} />
       </div>
 
       <div className="space-y-1.5">
@@ -43,8 +52,10 @@ export default function CustomSkillForm({ index, form }: CustomSkillFormProps) {
           id={`skills.${index}.scope_include`}
           placeholder="Clear technical explanation, stakeholder alignment, async written communication..."
           rows={2}
-          {...register(`skills.${index}.scope_include`, { required: true })}
+          aria-invalid={!!skillErrors?.scope_include}
+          {...register(`skills.${index}.scope_include`, requiredText("Describe what counts"))}
         />
+        <FieldError message={skillErrors?.scope_include?.message} />
       </div>
 
       <div className="space-y-2">
@@ -58,8 +69,13 @@ export default function CustomSkillForm({ index, form }: CustomSkillFormProps) {
                 id={`skills.${index}.${key}`}
                 placeholder={LEVEL_PLACEHOLDERS[i + 1]}
                 rows={2}
-                {...register(`skills.${index}.${key}`, { required: true })}
+                aria-invalid={!!skillErrors?.[key]}
+                {...register(
+                  `skills.${index}.${key}`,
+                  requiredText(`Describe what L${i + 1} looks like`),
+                )}
               />
+              <FieldError message={skillErrors?.[key]?.message} />
             </div>
           ),
         )}

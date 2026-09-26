@@ -28,9 +28,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import SkillCard from "@/components/assessment/SkillCard";
 import SkillPicker from "@/components/assessment/SkillPicker";
+import FieldError from "@/components/FieldError";
 import { ArrowLeft, Plus, Loader2 } from "lucide-react";
 import { assessmentsApi } from "@/services/assessments";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { requiredText } from "@/utils/validation";
 import { TIME_LIMIT_OPTIONS } from "@/utils/constants";
 import type { AssessmentSkill } from "@/types";
 
@@ -61,6 +63,7 @@ export default function AssessmentNewPage() {
     handleSubmit,
     control,
     setValue,
+    watch,
     formState: { errors },
   } = form;
   const { fields, append, remove, move } = useFieldArray({ control, name: "skills" });
@@ -101,7 +104,7 @@ export default function AssessmentNewPage() {
     setSubmitting(true);
     try {
       const payload = {
-        name: data.name,
+        name: data.name.trim(),
         time_limit_min: data.time_limit_min,
         language: data.language,
         assessment_skills_attributes: data.skills.map((s, i) => ({
@@ -139,9 +142,10 @@ export default function AssessmentNewPage() {
           <Input
             id="name"
             placeholder="Senior Frontend Engineer"
-            {...register("name", { required: "Role title is required" })}
+            aria-invalid={!!errors.name}
+            {...register("name", requiredText("Role title is required"))}
           />
-          {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          <FieldError message={errors.name?.message} />
         </div>
 
         {/* Time limit */}
@@ -241,7 +245,12 @@ export default function AssessmentNewPage() {
         </div>
       </form>
 
-      <SkillPicker open={pickerOpen} onOpenChange={setPickerOpen} onSelect={addB7Skill} />
+      <SkillPicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={addB7Skill}
+        addedLabels={watch("skills").map((s) => s.skill_label ?? "")}
+      />
     </div>
   );
 }
