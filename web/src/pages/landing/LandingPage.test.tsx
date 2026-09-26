@@ -62,4 +62,18 @@ describe("LandingPage", () => {
     await user.click(screen.getByRole("button", { name: /Request a demo/ }));
     expect(screen.getByRole("dialog", { name: "Request a demo" })).toBeInTheDocument();
   });
+
+  it("keeps repeated mobile cards in compact, keyboard-scrollable rails", () => {
+    renderHome(null);
+
+    const workflow = screen.getByRole("list", { name: "Assessment workflow" });
+    const highlights = screen.getByRole("list", { name: "Product highlights" });
+
+    [workflow, highlights].forEach((rail) => {
+      expect(rail).toHaveAttribute("tabindex", "0");
+      expect(rail).toHaveClass("overflow-x-auto", "grid-flow-col", "md:grid-flow-row");
+    });
+
+    expect(screen.getAllByText(/Swipe or scroll to see/i)).toHaveLength(2);
+  });
 });
