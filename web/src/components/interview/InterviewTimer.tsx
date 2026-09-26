@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface InterviewTimerProps {
@@ -36,11 +37,16 @@ export default function InterviewTimer({ totalSeconds, onExpired, running }: Int
   return (
     <span
       className={cn(
-        "font-mono text-sm font-medium tabular-nums",
-        isUrgent ? "text-destructive" : isWarning ? "text-amber-500" : "text-foreground",
+        "flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-sm font-medium tabular-nums",
+        isUrgent
+          ? "bg-destructive/10 text-destructive"
+          : isWarning
+            ? "bg-rakamin-yellow/25 text-rakamin-charcoal"
+            : "bg-muted text-foreground",
       )}
     >
-      ⏱ {formatTime(remaining)}
+      <Timer className="h-3.5 w-3.5" aria-hidden="true" />
+      {formatTime(remaining)}
     </span>
   );
 }
