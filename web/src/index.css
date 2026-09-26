@@ -90,13 +90,27 @@
 }
 
 @layer components {
-  /* Soft teal "sky" with a warm yellow glow, built only from the brand palette. */
+  /* Soft teal "sky" with a warm yellow glow, built only from the brand palette.
+     Each glow eases out over several stops so it never ends in a visible band, the two glows
+     sit in opposite corners so teal and yellow never mix into olive, and the base stays
+     light cyan so the panel's edge remains visible against a white page. */
   .bg-brand-gradient {
     background-color: rgb(var(--rakamin-light-cyan));
     background-image:
-      radial-gradient(60% 50% at 85% 15%, rgb(var(--rakamin-yellow) / 0.28), transparent 70%),
-      radial-gradient(70% 60% at 10% 0%, rgb(var(--rakamin-teal) / 0.45), transparent 70%),
-      linear-gradient(180deg, rgb(var(--rakamin-teal) / 0.25) 0%, rgb(var(--rakamin-white)) 100%);
+      radial-gradient(
+        55% 65% at 100% 0%,
+        rgb(var(--rakamin-yellow) / 0.3) 0%,
+        rgb(var(--rakamin-yellow) / 0.12) 40%,
+        rgb(var(--rakamin-yellow) / 0.03) 70%,
+        rgb(var(--rakamin-yellow) / 0) 100%
+      ),
+      radial-gradient(
+        75% 85% at 0% 0%,
+        rgb(var(--rakamin-teal) / 0.32) 0%,
+        rgb(var(--rakamin-teal) / 0.14) 40%,
+        rgb(var(--rakamin-teal) / 0.04) 70%,
+        rgb(var(--rakamin-teal) / 0) 100%
+      );
   }
 
   /* Faint wash behind app pages so white cards read as raised surfaces. */
