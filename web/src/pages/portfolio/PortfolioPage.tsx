@@ -32,14 +32,15 @@ export default function PortfolioPage() {
 
   const fetchPortfolio = useCallback(async () => {
     const res = await sessionsApi.getPortfolio(Number(sessionId));
-    const data = res.data as any;
+    const data = res.data;
     if (
-      data.status === "generating" ||
-      data.portfolio?.generation_status === "generating" ||
-      data.portfolio?.generation_status === "pending"
+      ("status" in data && data.status === "generating") ||
+      ("portfolio" in data &&
+        (data.portfolio.generation_status === "generating" ||
+          data.portfolio.generation_status === "pending"))
     ) {
       setGenerating(true);
-    } else if (data.portfolio) {
+    } else if ("portfolio" in data) {
       setPortfolio(data.portfolio);
       setGenerating(false);
       // Build overrides map

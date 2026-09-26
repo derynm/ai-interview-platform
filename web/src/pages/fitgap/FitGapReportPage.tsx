@@ -8,6 +8,7 @@ import ComparisonTable from "@/components/fitgap/ComparisonTable";
 import { portfoliosApi } from "@/services/portfolios";
 import { sessionsApi } from "@/services/sessions";
 import { usePolling } from "@/hooks/usePolling";
+import { getApiErrorStatus } from "@/lib/apiError";
 import { ArrowLeft, Download, Loader2, RefreshCw, Zap } from "lucide-react";
 import type { FitGapReport, Portfolio } from "@/types";
 
@@ -31,8 +32,8 @@ export default function FitGapReportPage() {
       const res = await portfoliosApi.getFitGap(portfolio.id, Number(vacancyId));
       setReport(res.data.report);
       setGenerating(false);
-    } catch (e: any) {
-      if (e?.response?.status === 404) {
+    } catch (requestError: unknown) {
+      if (getApiErrorStatus(requestError) === 404) {
         try {
           await portfoliosApi.triggerFitGap(portfolio.id, Number(vacancyId));
           setGenerating(true);
@@ -47,8 +48,8 @@ export default function FitGapReportPage() {
     sessionsApi
       .getPortfolio(Number(sessionId))
       .then(async (res) => {
-        const data = res.data as any;
-        if (data.portfolio) {
+        const data = res.data;
+        if ("portfolio" in data) {
           setPortfolio(data.portfolio);
         }
       })
