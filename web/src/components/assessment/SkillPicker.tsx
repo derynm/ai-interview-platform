@@ -81,7 +81,7 @@ export default function SkillPicker({
           />
         </div>
 
-        <div className="mt-2 max-h-64 overflow-y-auto space-y-1">
+        <div className="mt-2 max-h-72 space-y-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -99,10 +99,14 @@ export default function SkillPicker({
                   type="button"
                   onClick={() => handleSelect(s)}
                   disabled={isAdded}
-                  className="w-full flex items-center justify-between text-left px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm disabled:opacity-50 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-rakamin-light-cyan disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
                 >
                   <span>{s.skill_label}</span>
-                  {isAdded && <span className="text-xs text-muted-foreground">Added</span>}
+                  {isAdded && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      Added
+                    </span>
+                  )}
                 </button>
               );
             })

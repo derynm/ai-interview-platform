@@ -34,13 +34,17 @@ export default function SkillCard({ index, id, form, onRemove }: SkillCardProps)
     <div
       ref={setNodeRef}
       style={style}
-      className={cn("border rounded-lg bg-card", isDragging && "opacity-50 shadow-lg")}
+      className={cn(
+        "rounded-2xl border bg-card shadow-sm",
+        isDragging && "opacity-60 shadow-lg ring-2 ring-ring/30",
+      )}
     >
       {/* Card header */}
-      <div className="flex items-center gap-2 px-3 py-2.5">
+      <div className="flex items-center gap-2 px-3 py-3">
         <button
           type="button"
-          className="cursor-grab text-muted-foreground hover:text-foreground touch-none"
+          className="flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label={`Reorder ${skillLabel}`}
           {...attributes}
           {...listeners}
         >
@@ -50,7 +54,7 @@ export default function SkillCard({ index, id, form, onRemove }: SkillCardProps)
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm truncate">{skillLabel}</span>
-            <span className="text-xs text-muted-foreground shrink-0">
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground empty:hidden">
               {isCustom
                 ? "Custom"
                 : skill?.skill_id
@@ -63,7 +67,7 @@ export default function SkillCard({ index, id, form, onRemove }: SkillCardProps)
         <button
           type="button"
           onClick={onRemove}
-          className="text-muted-foreground hover:text-destructive transition-colors"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
           aria-label="Remove skill"
         >
           <X className="h-4 w-4" />
@@ -71,7 +75,7 @@ export default function SkillCard({ index, id, form, onRemove }: SkillCardProps)
       </div>
 
       {/* Card body */}
-      <div className="px-3 pb-3 space-y-3">
+      <div className="space-y-3 px-4 pb-4">
         {isCustom ? (
           <CustomSkillForm index={index} form={form} />
         ) : (
@@ -80,7 +84,8 @@ export default function SkillCard({ index, id, form, onRemove }: SkillCardProps)
             <button
               type="button"
               onClick={() => setAnchorsOpen((o) => !o)}
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
+              aria-expanded={anchorsOpen}
+              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
               {anchorsOpen ? (
                 <ChevronDown className="h-3 w-3" />
@@ -91,12 +96,12 @@ export default function SkillCard({ index, id, form, onRemove }: SkillCardProps)
             </button>
 
             {anchorsOpen && (
-              <div className="text-xs text-muted-foreground space-y-1 bg-muted/50 rounded p-2">
+              <div className="space-y-1.5 rounded-xl bg-rakamin-light-cyan/60 p-3 text-xs text-rakamin-charcoal">
                 {[1, 2, 3, 4, 5].map((level) => {
                   const anchor = skill?.[`l${level}_anchor` as keyof typeof skill] as string;
                   return anchor ? (
                     <div key={level}>
-                      <span className="font-medium text-foreground">L{level}</span> {anchor}
+                      <span className="mr-1 font-semibold text-primary">L{level}</span> {anchor}
                     </div>
                   ) : null;
                 })}
