@@ -26,13 +26,13 @@ export const LEVEL_DESCRIPTIONS: Record<number, string> = {
   5: "Expert",
 };
 
-// L-badge colors (Tailwind classes)
+// L-badge colors (Tailwind classes), an increasing ramp built from the brand palette
 export const LEVEL_BADGE_CLASSES: Record<number, string> = {
-  1: "bg-neutral-200 text-neutral-700",
-  2: "bg-blue-100 text-blue-700",
-  3: "bg-teal-100 text-teal-700",
-  4: "bg-purple-100 text-purple-700",
-  5: "bg-yellow-100 text-yellow-700",
+  1: "bg-rakamin-gray/15 text-rakamin-charcoal",
+  2: "bg-rakamin-light-cyan text-rakamin-dark-teal",
+  3: "bg-rakamin-teal/20 text-rakamin-dark-teal",
+  4: "bg-rakamin-dark-teal text-rakamin-white",
+  5: "bg-rakamin-yellow text-rakamin-charcoal",
 };
 
 // Coverage state display
@@ -51,10 +51,10 @@ export const COVERAGE_STATE_WIDTH: Record<string, number> = {
 };
 
 export const COVERAGE_STATE_COLOR: Record<string, string> = {
-  not_yet: "bg-neutral-200",
-  initiated: "bg-blue-300",
-  partial: "bg-teal-400",
-  covered: "bg-teal-600",
+  not_yet: "bg-rakamin-gray/30",
+  initiated: "bg-rakamin-teal/40",
+  partial: "bg-rakamin-teal",
+  covered: "bg-rakamin-dark-teal",
 };
 
 // Fit/Gap result display
@@ -66,8 +66,8 @@ export const FIT_GAP_RESULT_LABELS: Record<string, string> = {
 };
 
 export const FIT_GAP_RESULT_CLASSES: Record<string, string> = {
-  match: "text-green-700 bg-green-50",
-  gap: "text-amber-700 bg-amber-50",
-  exceed: "text-green-700 bg-green-50",
-  not_assessed: "text-neutral-500 bg-neutral-50",
+  match: "text-green-800 bg-green-50",
+  gap: "text-rakamin-charcoal bg-rakamin-yellow/30",
+  exceed: "text-rakamin-dark-teal bg-rakamin-light-cyan",
+  not_assessed: "text-rakamin-charcoal bg-rakamin-gray/15",
 };
