@@ -99,6 +99,22 @@ describe("useAudioWebSocket", () => {
     expect(latestSocket().url).toContain(`?token=invite-token&client_id=${"a".repeat(32)}`);
   });
 
+  it("URL-encodes the invite token in the socket URL", () => {
+    renderHook(() =>
+      useAudioWebSocket({
+        sessionId: 3,
+        token: "a b&c=d",
+        clientId: "a".repeat(32),
+        onAudioChunk: vi.fn(),
+        onTranscript: vi.fn(),
+        onStateChange: vi.fn(),
+        onSpeakerChange: vi.fn(),
+      }),
+    ).result.current.connect();
+
+    expect(latestSocket().url).toContain("?token=a%20b%26c%3Dd&client_id=");
+  });
+
   it("stops and reports session_in_use when another browser already started the interview", () => {
     const { onStateChange, onSessionFailed } = setup();
 
