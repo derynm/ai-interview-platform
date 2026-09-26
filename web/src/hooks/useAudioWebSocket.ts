@@ -5,12 +5,13 @@ import type { WsControlMessage, TranscriptTurn, InterviewState, InterviewSpeaker
 interface UseAudioWebSocketOptions {
   sessionId: number;
   token?: string;
+  clientId?: string;
   onAudioChunk: (buffer: ArrayBuffer) => void;
   onTranscript: (turn: Pick<TranscriptTurn, "speaker" | "text">) => void;
   onStateChange: (state: InterviewState) => void;
   onSpeakerChange: (speaker: InterviewSpeaker) => void;
   onReconnected?: () => void;
-  onSessionFailed?: () => void;
+  onSessionFailed?: (code?: string) => void;
 }
 
 const RECONNECT_DELAYS = [1000, 2000, 4000];
@@ -18,6 +19,7 @@ const RECONNECT_DELAYS = [1000, 2000, 4000];
 export function useAudioWebSocket({
   sessionId,
   token,
+  clientId,
   onAudioChunk,
   onTranscript,
   onStateChange,
@@ -39,7 +41,7 @@ export function useAudioWebSocket({
     sessionEndedRef.current = false;
     setConnectionState("connecting");
     const url = token
-      ? `${WS_URL}/ws/sessions/${sessionId}/audio?token=${token}`
+      ? `${WS_URL}/ws/sessions/${sessionId}/audio?token=${token}&client_id=${clientId ?? ""}`
       : `${WS_URL}/ws/sessions/${sessionId}/audio`;
     const ws = new WebSocket(url);
     ws.binaryType = "arraybuffer";
@@ -117,7 +119,7 @@ export function useAudioWebSocket({
                 // reconnecting would only be rejected again.
                 sessionEndedRef.current = true;
                 reconnectAttemptsRef.current = RECONNECT_DELAYS.length;
-                onSessionFailed?.();
+                onSessionFailed?.(msg.code);
                 onStateChange("complete");
               }
               break;
@@ -150,6 +152,7 @@ export function useAudioWebSocket({
   }, [
     sessionId,
     token,
+    clientId,
     onAudioChunk,
     onTranscript,
     onStateChange,

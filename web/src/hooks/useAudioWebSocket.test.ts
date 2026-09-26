@@ -48,6 +48,7 @@ function setup() {
     useAudioWebSocket({
       sessionId: 3,
       token: "invite-token",
+      clientId: "a".repeat(32),
       onAudioChunk: vi.fn(),
       onTranscript: vi.fn(),
       onStateChange,
@@ -90,6 +91,32 @@ describe("useAudioWebSocket", () => {
     expect(onSessionFailed).toHaveBeenCalledTimes(1);
     expect(onStateChange).toHaveBeenLastCalledWith("complete");
     expect(onStateChange).not.toHaveBeenCalledWith("reconnecting");
+  });
+
+  it("identifies this browser to the backend when connecting with an invite token", () => {
+    setup();
+
+    expect(latestSocket().url).toContain(`?token=invite-token&client_id=${"a".repeat(32)}`);
+  });
+
+  it("stops and reports session_in_use when another browser already started the interview", () => {
+    const { onStateChange, onSessionFailed } = setup();
+
+    act(() => {
+      latestSocket().serverOpen();
+      latestSocket().serverSend({
+        type: "error",
+        code: "session_in_use",
+        message: "Interview already in progress in another browser",
+        recoverable: false,
+      });
+      latestSocket().serverClose();
+    });
+    act(() => vi.advanceTimersByTime(30_000));
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(onSessionFailed).toHaveBeenCalledWith("session_in_use");
+    expect(onStateChange).toHaveBeenLastCalledWith("complete");
   });
 
   it("gives up after the retry budget when sockets open but the session never starts", () => {

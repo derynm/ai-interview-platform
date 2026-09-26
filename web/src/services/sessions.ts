@@ -26,7 +26,8 @@ export const sessionsApi = {
   regeneratePortfolio: (id: number) =>
     api.post<{ message: string; portfolio: Portfolio }>(`/sessions/${id}/portfolio/regenerate`),
 
-  getCandidateInfo: (token: string) => api.get<CandidateInfo>(`/sessions/${token}/candidate`),
+  getCandidateInfo: (token: string, clientId: string) =>
+    api.get<CandidateInfo>(`/sessions/${token}/candidate`, { params: { client_id: clientId } }),
 
   audioComplete: (token: string) =>
     api.post<{ ended: boolean; message: string }>(`/sessions/${token}/audio_complete`),
