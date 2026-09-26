@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import LoadError from "@/components/LoadError";
+import EmptyState from "@/components/EmptyState";
+import PageHeader from "@/components/layout/PageHeader";
 import { vacanciesApi } from "@/services/vacancies";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { Plus, Briefcase, ChevronRight, Loader2 } from "lucide-react";
@@ -45,45 +47,53 @@ export default function VacancyListPage() {
   const hasMore = !!meta && meta.current_page < meta.total_pages;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Vacancies</h1>
-        <Button onClick={() => navigate("/vacancies/new")}>
-          <Plus className="h-4 w-4 mr-1.5" /> New Vacancy
-        </Button>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Workspace"
+        title="Vacancies"
+        description="Describe open roles so candidate portfolios can be compared against them."
+        actions={
+          <Button onClick={() => navigate("/vacancies/new")}>
+            <Plus /> New Vacancy
+          </Button>
+        }
+      />
 
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {[1, 2].map((i) => (
-            <Skeleton key={i} className="h-14 w-full" />
+            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
           ))}
         </div>
       ) : error && vacancies.length === 0 ? (
         <LoadError message={error} onRetry={() => loadPage(nextPage)} />
       ) : vacancies.length === 0 ? (
-        <div className="border rounded-lg p-12 text-center text-sm text-muted-foreground">
-          <p className="mb-3">No vacancies yet.</p>
-          <Button variant="outline" onClick={() => navigate("/vacancies/new")}>
-            <Plus className="h-4 w-4 mr-1.5" /> Create your first vacancy
-          </Button>
-        </div>
+        <EmptyState
+          icon={Briefcase}
+          title="No vacancies yet."
+          description="Add a vacancy with the skill levels a role needs to run fit/gap reports."
+          action={
+            <Button variant="outline" onClick={() => navigate("/vacancies/new")}>
+              <Plus /> Create your first vacancy
+            </Button>
+          }
+        />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {vacancies.map((v) => (
-            <Card
+            <Link
               key={v.id}
-              className="cursor-pointer hover:border-primary/40 transition-colors"
-              onClick={() => navigate(`/vacancies/${v.id}/edit`)}
+              to={`/vacancies/${v.id}/edit`}
+              className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <CardContent className="py-3 px-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <p className="font-medium text-sm">{v.role_title}</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </CardContent>
-            </Card>
+              <Card className="flex items-center gap-4 p-4 transition-all group-hover:-translate-y-0.5 group-hover:border-primary/40 motion-reduce:transition-none">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rakamin-light-cyan text-primary">
+                  <Briefcase className="h-5 w-5" />
+                </span>
+                <p className="min-w-0 flex-1 truncate font-medium">{v.role_title}</p>
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </Card>
+            </Link>
           ))}
           {error && <LoadError message={error} onRetry={() => loadPage(nextPage)} />}
           {hasMore && !error && (
@@ -93,7 +103,7 @@ export default function VacancyListPage() {
               onClick={() => loadPage(nextPage)}
               disabled={loadingMore}
             >
-              {loadingMore && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {loadingMore && <Loader2 className="animate-spin" />}
               Load more
             </Button>
           )}
