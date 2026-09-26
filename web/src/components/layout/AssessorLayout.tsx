@@ -3,6 +3,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { tenantAtom } from "@/stores/tenantAtom";
 import { authAtom, clearToken } from "@/stores/authAtom";
 import { Button } from "@/components/ui/button";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { LayoutDashboard, ClipboardList, Briefcase, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "react-router-dom";
@@ -68,7 +69,10 @@ export default function AssessorLayout() {
 
       {/* Page content */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
-        <Outlet />
+        {/* Keyed by path: a crash stays inside this page, and navigating away recovers. */}
+        <ErrorBoundary key={location.pathname} fullScreen={false}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );

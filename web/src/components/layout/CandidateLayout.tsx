@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default function CandidateLayout() {
   return (
@@ -11,7 +12,9 @@ export default function CandidateLayout() {
       </header>
 
       <main className="flex-1 flex flex-col">
-        <Outlet />
+        <ErrorBoundary fullScreen={false}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );
