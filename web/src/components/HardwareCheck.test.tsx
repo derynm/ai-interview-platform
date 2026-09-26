@@ -44,6 +44,7 @@ class FakeAudioContext {
 describe("HardwareCheck", () => {
   beforeEach(() => {
     vi.stubGlobal("AudioContext", FakeAudioContext);
+    vi.stubGlobal("AudioWorkletNode", class {});
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
       value: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [] }) },
@@ -73,5 +74,32 @@ describe("HardwareCheck", () => {
     expect(screen.queryByText("Checking...")).not.toBeInTheDocument();
     expect(screen.getAllByText("Passed")).toHaveLength(4);
     expect(testInternetSpeed).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails the browser check with guidance when media APIs are unavailable", async () => {
+    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: undefined });
+
+    render(<HardwareCheck />);
+
+    expect(
+      await screen.findByText(/missing features the interview needs/, {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(testInternetSpeed).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Start Interview" })).toBeDisabled();
+  });
+
+  it("explains how to fix a denied microphone", async () => {
+    vi.mocked(testInternetSpeed).mockResolvedValue(speedResult(true));
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: vi.fn().mockRejectedValue(new Error("NotAllowedError")) },
+    });
+
+    render(<HardwareCheck />);
+
+    expect(
+      await screen.findByText(/Allow microphone access/, {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start Interview" })).toBeDisabled();
   });
 });
