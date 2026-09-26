@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { Provider, createStore } from "jotai";
 import { MemoryRouter } from "react-router-dom";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import App from "@/App";
@@ -49,5 +50,16 @@ describe("LandingPage", () => {
     const hero = screen.getByRole("heading", { level: 1 }).closest("section")!;
     expect(within(hero).queryByText("Live coverage")).toBeInTheDocument();
     expect(within(hero).getByText("Live coverage").closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it("closes with a demo request instead of a third sign-in button", async () => {
+    const user = userEvent.setup();
+    renderHome(null);
+
+    // Sign-in stays in the header and hero only.
+    expect(screen.getAllByRole("link", { name: /Sign in/ })).toHaveLength(2);
+
+    await user.click(screen.getByRole("button", { name: /Request a demo/ }));
+    expect(screen.getByRole("dialog", { name: "Request a demo" })).toBeInTheDocument();
   });
 });
