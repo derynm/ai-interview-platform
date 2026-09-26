@@ -13,23 +13,32 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import LoadError from "@/components/LoadError";
 import { assessmentsApi } from "@/services/assessments";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/apiError";
+import { copyText } from "@/utils/clipboard";
 import { LEVEL_LABELS } from "@/utils/constants";
 import { ArrowLeft, Copy, Check, Eye, Pencil, Clock, Plus, UserRound } from "lucide-react";
 import type { Assessment, Session } from "@/types";
+
+// key is a session id, or "new" for the link card shown right after creating a session.
+interface CopyResult {
+  key: number | "new";
+  ok: boolean;
+}
 
 function SessionRow({
   session,
   index,
   assessmentId,
   onCopy,
-  copiedId,
+  copyResult,
 }: {
   session: Session;
   index: number;
   assessmentId: string;
   onCopy: (id: number) => void;
-  copiedId: number | null;
+  copyResult: CopyResult | null;
 }) {
   const navigate = useNavigate();
   const isLive = session.status === "active";
@@ -87,10 +96,12 @@ function SessionRow({
               className="h-7 px-2 text-xs"
               onClick={() => onCopy(session.id)}
             >
-              {copiedId === session.id ? (
+              {copyResult?.key === session.id && copyResult.ok ? (
                 <>
                   <Check className="h-3 w-3 mr-1" /> Copied
                 </>
+              ) : copyResult?.key === session.id ? (
+                <span className="text-destructive">Copy failed — copy the link manually</span>
               ) : (
                 <>
                   <Copy className="h-3 w-3 mr-1" /> Copy link
@@ -134,27 +145,44 @@ export default function AssessmentInvitePage() {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [creatingSession, setCreatingSession] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const [newSession, setNewSession] = useState<Session | null>(null);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-  const [newSessionCopied, setNewSessionCopied] = useState(false);
+  const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [candidateNameInput, setCandidateNameInput] = useState("");
 
   const loadSessions = useCallback(async () => {
-    const res = await assessmentsApi.getSessions(Number(id));
-    setSessions(res.data.sessions);
+    try {
+      const res = await assessmentsApi.getSessions(Number(id));
+      setSessions(res.data.sessions);
+    } catch {
+      // Transient poll failure — keep the current list and retry on the next interval.
+    }
   }, [id]);
 
-  useEffect(() => {
+  const loadPage = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
     Promise.all([assessmentsApi.get(Number(id)), assessmentsApi.getSessions(Number(id))])
       .then(([aRes, sRes]) => {
         setAssessment(aRes.data.assessment);
         setSessions(sRes.data.sessions);
       })
-      .catch(() => {})
+      .catch((requestError: unknown) =>
+        setLoadError(
+          getApiErrorStatus(requestError) === 404
+            ? "This assessment doesn't exist or was deleted."
+            : getApiErrorMessage(requestError, "Failed to load the assessment."),
+        ),
+      )
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    loadPage();
+  }, [loadPage]);
 
   // Poll while any session is live or pending
   useEffect(() => {
@@ -166,13 +194,15 @@ export default function AssessmentInvitePage() {
 
   const openInviteDialog = () => {
     setCandidateNameInput("");
+    setInviteError(null);
     setShowInviteDialog(true);
   };
 
   const handleInviteCandidate = async () => {
+    // Enter and a click can both fire before the first request resolves.
+    if (creatingSession) return;
     setCreatingSession(true);
-    setShowInviteDialog(false);
-    setNewSession(null);
+    setInviteError(null);
     try {
       const res = await assessmentsApi.createSession(
         Number(id),
@@ -181,22 +211,18 @@ export default function AssessmentInvitePage() {
       const created = res.data.session;
       setNewSession(created);
       setSessions((prev) => [created, ...prev]);
+      setShowInviteDialog(false);
+    } catch (requestError: unknown) {
+      setInviteError(getApiErrorMessage(requestError, "Failed to create the invite link."));
     } finally {
       setCreatingSession(false);
     }
   };
 
-  const copyLink = (session: Session, id: number) => {
-    navigator.clipboard.writeText(session.invite_url);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const copyNewSessionLink = () => {
-    if (!newSession?.invite_url) return;
-    navigator.clipboard.writeText(newSession.invite_url);
-    setNewSessionCopied(true);
-    setTimeout(() => setNewSessionCopied(false), 2000);
+  const copyLink = async (url: string, key: CopyResult["key"]) => {
+    const ok = await copyText(url);
+    setCopyResult({ key, ok });
+    if (ok) setTimeout(() => setCopyResult(null), 2000);
   };
 
   if (loading) {
@@ -205,6 +231,17 @@ export default function AssessmentInvitePage() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <Link to="/assessments" className="text-sm text-muted-foreground hover:text-foreground">
+          ← Back to assessments
+        </Link>
+        <LoadError message={loadError} onRetry={loadPage} />
       </div>
     );
   }
@@ -256,12 +293,15 @@ export default function AssessmentInvitePage() {
             <p className="text-xs text-muted-foreground">
               Optional — helps you identify this session later.
             </p>
+            {inviteError && <p className="text-sm text-destructive">{inviteError}</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleInviteCandidate}>Create Link</Button>
+            <Button onClick={handleInviteCandidate} disabled={creatingSession}>
+              {creatingSession ? "Creating..." : "Create Link"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -281,15 +321,24 @@ export default function AssessmentInvitePage() {
               )}
             </p>
             <div className="flex items-center gap-2 border rounded-md px-3 py-2 bg-card">
-              <span className="flex-1 text-sm font-mono truncate text-muted-foreground">
+              <span className="flex-1 text-sm font-mono truncate text-muted-foreground select-all">
                 {newSession.invite_url}
               </span>
             </div>
-            <Button variant="outline" size="sm" onClick={copyNewSessionLink} className="w-full">
-              {newSessionCopied ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => copyLink(newSession.invite_url, "new")}
+              className="w-full"
+            >
+              {copyResult?.key === "new" && copyResult.ok ? (
                 <>
                   <Check className="h-3.5 w-3.5 mr-1.5" /> Copied!
                 </>
+              ) : copyResult?.key === "new" ? (
+                <span className="text-destructive">
+                  Copy failed — select the link above and copy it manually
+                </span>
               ) : (
                 <>
                   <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy link
@@ -334,9 +383,9 @@ export default function AssessmentInvitePage() {
                   assessmentId={id!}
                   onCopy={(sid) => {
                     const s = sessions.find((x) => x.id === sid);
-                    if (s) copyLink(s, sid);
+                    if (s) copyLink(s.invite_url, sid);
                   }}
-                  copiedId={copiedId}
+                  copyResult={copyResult}
                 />
               ))}
             </CardContent>
