@@ -10,6 +10,7 @@ interface UseAudioWebSocketOptions {
   onStateChange: (state: InterviewState) => void;
   onSpeakerChange: (speaker: InterviewSpeaker) => void;
   onReconnected?: () => void;
+  onSessionFailed?: () => void;
 }
 
 const RECONNECT_DELAYS = [1000, 2000, 4000];
@@ -22,6 +23,7 @@ export function useAudioWebSocket({
   onStateChange,
   onSpeakerChange,
   onReconnected,
+  onSessionFailed,
 }: UseAudioWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
@@ -45,7 +47,6 @@ export function useAudioWebSocket({
 
     ws.onopen = () => {
       setConnectionState("connected");
-      reconnectAttemptsRef.current = 0;
       if (token) ws.send(JSON.stringify({ type: "auth", token }));
     };
 
@@ -65,6 +66,9 @@ export function useAudioWebSocket({
           const msg = JSON.parse(event.data) as WsControlMessage;
           switch (msg.type) {
             case "session_started":
+              // Reset the retry budget only once the backend confirms the session is live —
+              // a socket that opens and is immediately rejected must not refill it.
+              reconnectAttemptsRef.current = 0;
               onStateChange("active");
               break;
             case "transcription":
@@ -97,16 +101,25 @@ export function useAudioWebSocket({
               onStateChange("reconnecting");
               break;
             case "reconnected":
+              reconnectAttemptsRef.current = 0;
               onStateChange("active");
               onReconnected?.();
               break;
             case "session_ended":
               sessionEndedRef.current = true;
               reconnectAttemptsRef.current = RECONNECT_DELAYS.length; // suppress reconnect
+              if (msg.reason === "error") onSessionFailed?.();
               onStateChange("complete");
               break;
             case "error":
-              if (!msg.recoverable) onStateChange("complete");
+              if (!msg.recoverable) {
+                // Backend rejected the session (e.g. auth_failed, session already ended) —
+                // reconnecting would only be rejected again.
+                sessionEndedRef.current = true;
+                reconnectAttemptsRef.current = RECONNECT_DELAYS.length;
+                onSessionFailed?.();
+                onStateChange("complete");
+              }
               break;
           }
         } catch {
@@ -130,10 +143,20 @@ export function useAudioWebSocket({
           connect();
         }, RECONNECT_DELAYS[attempt]);
       } else {
+        onSessionFailed?.();
         onStateChange("complete");
       }
     };
-  }, [sessionId, token, onAudioChunk, onTranscript, onStateChange, onSpeakerChange, onReconnected]);
+  }, [
+    sessionId,
+    token,
+    onAudioChunk,
+    onTranscript,
+    onStateChange,
+    onSpeakerChange,
+    onReconnected,
+    onSessionFailed,
+  ]);
 
   const send = useCallback((buffer: ArrayBuffer) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -149,13 +172,14 @@ export function useAudioWebSocket({
 
   const disconnect = useCallback(() => {
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-    reconnectAttemptsRef.current = RECONNECT_DELAYS.length; // prevent reconnect
+    sessionEndedRef.current = true; // intentional close — do not reconnect or report failure
     wsRef.current?.close();
   }, []);
 
   useEffect(() => {
     return () => {
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      sessionEndedRef.current = true;
       wsRef.current?.close();
     };
   }, []);
