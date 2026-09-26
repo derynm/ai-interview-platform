@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import FieldError from "@/components/FieldError";
 import LevelRadio from "./LevelRadio";
-import { requiredText } from "@/utils/validation";
+import { MAX_TEXT_FIELD_LENGTH, requiredText } from "@/utils/validation";
 import type { AssessmentFormValues } from "@/pages/assessments/AssessmentNewPage";
 
 interface CustomSkillFormProps {
@@ -38,6 +38,7 @@ export default function CustomSkillForm({ index, form }: CustomSkillFormProps) {
         <Input
           id={`skills.${index}.skill_label`}
           placeholder="e.g. Communication"
+          maxLength={MAX_TEXT_FIELD_LENGTH}
           aria-invalid={!!skillErrors?.skill_label}
           {...register(`skills.${index}.skill_label`, requiredText("Skill name is required"))}
         />

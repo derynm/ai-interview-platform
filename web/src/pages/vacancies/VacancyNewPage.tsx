@@ -11,7 +11,7 @@ import SkillPicker from "@/components/assessment/SkillPicker";
 import FieldError from "@/components/FieldError";
 import { vacanciesApi } from "@/services/vacancies";
 import { getApiErrorMessage } from "@/lib/apiError";
-import { requiredText } from "@/utils/validation";
+import { MAX_TEXT_FIELD_LENGTH, requiredText } from "@/utils/validation";
 import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
 import type { VacancySkill } from "@/types";
 
@@ -83,6 +83,7 @@ export default function VacancyNewPage() {
           <Input
             id="role_title"
             placeholder="Senior Frontend Engineer"
+            maxLength={MAX_TEXT_FIELD_LENGTH}
             aria-invalid={!!errors.role_title}
             {...register("role_title", requiredText("Role title is required"))}
           />
