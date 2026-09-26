@@ -1,8 +1,9 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import AssessorLayout from "@/components/layout/AssessorLayout";
 import CandidateLayout from "@/components/layout/CandidateLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import NumericParamsRoute from "@/components/NumericParamsRoute";
+import LandingPage from "@/pages/landing/LandingPage";
 import LoginPage from "@/pages/auth/LoginPage";
 import AssessmentListPage from "@/pages/assessments/AssessmentListPage";
 import AssessmentNewPage from "@/pages/assessments/AssessmentNewPage";
@@ -21,14 +22,14 @@ import NotFoundPage from "@/pages/NotFoundPage";
 export default function App() {
   return (
     <Routes>
-      {/* Auth routes */}
+      {/* Public routes */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
 
       {/* Assessor routes (protected) */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AssessorLayout />}>
           <Route element={<NumericParamsRoute />}>
-            <Route path="/" element={<Navigate to="/assessments" replace />} />
             <Route path="/assessments" element={<AssessmentListPage />} />
             <Route path="/assessments/new" element={<AssessmentNewPage />} />
             <Route path="/assessments/:id/edit" element={<AssessmentEditPage />} />
