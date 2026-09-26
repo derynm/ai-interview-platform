@@ -4,6 +4,7 @@ import { useAtomValue } from "jotai";
 import { authAtom } from "@/stores/authAtom";
 import { useInView } from "@/hooks/useInView";
 import BrandMark from "@/components/layout/BrandMark";
+import DemoRequestDialog from "@/components/landing/DemoRequestDialog";
 import LevelBadge from "@/components/portfolio/LevelBadge";
 import VoiceBars from "@/components/interview/VoiceBars";
 import { Progress } from "@/components/ui/progress";
@@ -17,10 +18,10 @@ import { cn } from "@/lib/utils";
 import {
   ArrowDown,
   ArrowUpRight,
+  CalendarCheck,
   Download,
   Headphones,
   Link2,
-  ListChecks,
   Mic,
   Scale,
   UserCheck,
@@ -457,12 +458,9 @@ export default function LandingPage() {
         {/* Belief */}
         <section className="mx-auto max-w-5xl px-4 py-20">
           <Reveal className="grid gap-8 md:grid-cols-2 md:gap-12">
-            <div className="space-y-6">
-              <h2 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-                A hiring decision should rest on evidence, not a gut feeling
-              </h2>
-              <PillLink to={primaryCta.to}>{primaryCta.label}</PillLink>
-            </div>
+            <h2 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+              A hiring decision should rest on evidence, not a gut feeling
+            </h2>
             <p className="self-end text-lg leading-relaxed text-rakamin-charcoal">
               A good interviewer listens, asks what was behind an answer, and knows when they have
               heard enough.{" "}
@@ -616,19 +614,32 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Closing call to action */}
+        {/* Closing call to action: a demo request, so the page doesn't repeat sign-in a third time */}
         <section className="px-3 pb-3 sm:px-4 sm:pb-4">
           <Reveal className="bg-brand-gradient mx-auto flex max-w-6xl flex-col items-center rounded-[2rem] px-6 py-16 text-center">
-            <ListChecks className="h-8 w-8 text-primary" />
+            <CalendarCheck className="h-8 w-8 text-primary" />
             <h2 className="mt-4 max-w-xl text-3xl font-semibold tracking-tight">
-              Ready to run your next assessment?
+              See it with the roles you hire for
             </h2>
             <p className="mt-3 max-w-md text-sm text-rakamin-charcoal/80">
-              Sign in with the account from your organization. Need access? Ask your workspace admin
-              to add you.
+              Request a demo and the Rakamin team will walk you through an interview, the live
+              coverage monitor, and the evidence behind each rating.
             </p>
             <div className="mt-6">
-              <PillLink to={primaryCta.to}>{primaryCta.label}</PillLink>
+              <DemoRequestDialog
+                trigger={
+                  <button
+                    type="button"
+                    className={cn(
+                      PILL,
+                      "bg-secondary text-secondary-foreground hover:bg-secondary/90",
+                    )}
+                  >
+                    Request a demo
+                    <PillArrow />
+                  </button>
+                }
+              />
             </div>
           </Reveal>
         </section>
