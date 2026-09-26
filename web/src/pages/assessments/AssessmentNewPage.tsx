@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import SkillCard from "@/components/assessment/SkillCard";
 import SkillPicker from "@/components/assessment/SkillPicker";
+import CustomSkillDialog from "@/components/assessment/CustomSkillDialog";
 import FieldError from "@/components/FieldError";
 import EmptyState from "@/components/EmptyState";
 import FormSection from "@/components/FormSection";
@@ -52,6 +53,11 @@ export default function AssessmentNewPage() {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [customSkillOpen, setCustomSkillOpen] = useState(false);
+  const [editingCustomSkill, setEditingCustomSkill] = useState<{
+    index: number;
+    skill: Partial<AssessmentSkill>;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm<AssessmentFormValues>({
@@ -68,10 +74,11 @@ export default function AssessmentNewPage() {
     handleSubmit,
     control,
     setValue,
+    getValues,
     watch,
     formState: { errors, isDirty },
   } = form;
-  const { fields, append, remove, move } = useFieldArray({ control, name: "skills" });
+  const { fields, append, remove, move, update } = useFieldArray({ control, name: "skills" });
   const { blocker, allowNavigation } = useUnsavedChangesGuard(isDirty);
 
   const sensors = useSensors(
@@ -88,13 +95,23 @@ export default function AssessmentNewPage() {
     }
   };
 
-  const addCustomSkill = () => {
-    append({
-      skill_label: "",
-      is_custom: true,
-      expected_level: 3,
-      display_order: fields.length,
-    });
+  const openNewCustomSkill = () => {
+    setEditingCustomSkill(null);
+    setCustomSkillOpen(true);
+  };
+
+  const openCustomSkillEditor = (index: number) => {
+    setEditingCustomSkill({ index, skill: getValues(`skills.${index}`) });
+    setCustomSkillOpen(true);
+  };
+
+  const saveCustomSkill = (skill: Partial<AssessmentSkill>) => {
+    if (editingCustomSkill) {
+      update(editingCustomSkill.index, skill);
+      return;
+    }
+
+    append({ ...skill, display_order: fields.length });
   };
 
   const addB7Skill = (skill: Partial<AssessmentSkill>) => {
@@ -222,6 +239,7 @@ export default function AssessmentNewPage() {
                       index={index}
                       form={form}
                       onRemove={() => remove(index)}
+                      onEditCustom={() => openCustomSkillEditor(index)}
                     />
                   ))}
                 </div>
@@ -234,7 +252,7 @@ export default function AssessmentNewPage() {
               <Plus />
               Add from Skill Taxonomy
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={addCustomSkill}>
+            <Button type="button" variant="outline" size="sm" onClick={openNewCustomSkill}>
               <Plus />
               Add custom skill
             </Button>
@@ -261,6 +279,13 @@ export default function AssessmentNewPage() {
         onOpenChange={setPickerOpen}
         onSelect={addB7Skill}
         addedLabels={watch("skills").map((s) => s.skill_label ?? "")}
+      />
+
+      <CustomSkillDialog
+        open={customSkillOpen}
+        onOpenChange={setCustomSkillOpen}
+        onSave={saveCustomSkill}
+        skill={editingCustomSkill?.skill}
       />
     </div>
   );

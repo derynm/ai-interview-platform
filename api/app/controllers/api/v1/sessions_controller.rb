@@ -21,10 +21,13 @@ module Api
       # POST /api/v1/assessments/:assessment_id/sessions
       def create
         assessment = Assessment.find(params[:assessment_id])
+        candidate_name = params.dig(:session, :candidate_name).to_s.strip
+
+        return json_error("Candidate name is required", :unprocessable_entity) if candidate_name.blank?
 
         session = assessment.sessions.new(
           candidate_id:   params.dig(:session, :candidate_id),
-          candidate_name: params.dig(:session, :candidate_name).presence,
+          candidate_name: candidate_name,
           tenant_id:      current_tenant_id
         )
 

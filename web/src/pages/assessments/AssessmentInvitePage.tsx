@@ -6,12 +6,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import FieldError from "@/components/FieldError";
 import LoadError from "@/components/LoadError";
 import EmptyState from "@/components/EmptyState";
 import Notice from "@/components/Notice";
@@ -29,6 +31,11 @@ import type { Assessment, Session } from "@/types";
 interface CopyResult {
   key: number | "new";
   ok: boolean;
+}
+
+function interviewUrl(session: Session) {
+  return new URL(`/interview/${encodeURIComponent(session.invite_token)}`, window.location.origin)
+    .href;
 }
 
 function SessionRow({
@@ -121,6 +128,7 @@ export default function AssessmentInvitePage() {
   const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [candidateNameInput, setCandidateNameInput] = useState("");
+  const [candidateNameError, setCandidateNameError] = useState<string | null>(null);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -163,6 +171,7 @@ export default function AssessmentInvitePage() {
 
   const openInviteDialog = () => {
     setCandidateNameInput("");
+    setCandidateNameError(null);
     setInviteError(null);
     setShowInviteDialog(true);
   };
@@ -170,13 +179,17 @@ export default function AssessmentInvitePage() {
   const handleInviteCandidate = async () => {
     // Enter and a click can both fire before the first request resolves.
     if (creatingSession) return;
+    const candidateName = candidateNameInput.trim();
+    if (!candidateName) {
+      setCandidateNameError("Candidate name is required");
+      return;
+    }
+
     setCreatingSession(true);
+    setCandidateNameError(null);
     setInviteError(null);
     try {
-      const res = await assessmentsApi.createSession(
-        Number(id),
-        candidateNameInput.trim() || undefined,
-      );
+      const res = await assessmentsApi.createSession(Number(id), candidateName);
       const created = res.data.session;
       setNewSession(created);
       setSessions((prev) => [created, ...prev]);
@@ -244,73 +257,107 @@ export default function AssessmentInvitePage() {
       {/* Invite candidate dialog */}
       <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Invite Candidate</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label htmlFor="candidate-name">Candidate name</Label>
-            <Input
-              id="candidate-name"
-              placeholder="e.g. Budi Santoso"
-              maxLength={MAX_TEXT_FIELD_LENGTH}
-              value={candidateNameInput}
-              onChange={(e) => setCandidateNameInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleInviteCandidate()}
-              autoFocus
-            />
-            <p className="text-xs text-muted-foreground">
-              Optional — helps you identify this session later.
-            </p>
-            {inviteError && <Notice variant="error">{inviteError}</Notice>}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleInviteCandidate} disabled={creatingSession}>
-              {creatingSession ? "Creating..." : "Create Link"}
-            </Button>
-          </DialogFooter>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleInviteCandidate();
+            }}
+            noValidate
+          >
+            <DialogHeader>
+              <DialogTitle>Invite Candidate</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="candidate-name">
+                Candidate name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="candidate-name"
+                placeholder="e.g. Budi Santoso"
+                maxLength={MAX_TEXT_FIELD_LENGTH}
+                value={candidateNameInput}
+                onChange={(event) => {
+                  setCandidateNameInput(event.target.value);
+                  if (candidateNameError) setCandidateNameError(null);
+                }}
+                aria-invalid={!!candidateNameError}
+                aria-describedby={candidateNameError ? "candidate-name-error" : undefined}
+                autoFocus
+              />
+              {candidateNameError && (
+                <div id="candidate-name-error" role="alert">
+                  <FieldError message={candidateNameError} />
+                </div>
+              )}
+              {inviteError && <Notice variant="error">{inviteError}</Notice>}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowInviteDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={creatingSession}>
+                {creatingSession ? "Creating..." : "Create Link"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
       {/* Newly created session invite link */}
-      {newSession && (
-        <div className="bg-brand-gradient space-y-3 rounded-3xl border border-rakamin-teal/20 p-5">
-          <p className="flex items-center gap-2 text-sm font-medium">
-            <Link2 className="h-4 w-4 text-primary" />
-            {newSession.candidate_name ? (
-              <span>
-                Link for <span className="font-semibold">{newSession.candidate_name}</span> ready —
-                share with your candidate:
-              </span>
-            ) : (
-              <span>New invite link ready — share with your candidate:</span>
-            )}
-          </p>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <span className="flex-1 select-all truncate rounded-full border bg-card px-4 py-2.5 font-mono text-sm text-muted-foreground">
-              {newSession.invite_url}
-            </span>
-            <Button onClick={() => copyLink(newSession.invite_url, "new")}>
-              {copyResult?.key === "new" && copyResult.ok ? (
-                <>
-                  <Check /> Copied!
-                </>
-              ) : (
-                <>
-                  <Copy /> Copy link
-                </>
+      <Dialog
+        open={newSession !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setNewSession(null);
+            setCopyResult(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          {newSession && (
+            <>
+              <DialogHeader>
+                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-rakamin-light-cyan text-primary">
+                  <Link2 className="h-5 w-5" />
+                </div>
+                <DialogTitle>Invite link ready</DialogTitle>
+                <DialogDescription>
+                  Share this private interview link with {newSession.candidate_name}.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  aria-label="Interview link"
+                  value={interviewUrl(newSession)}
+                  readOnly
+                  className="min-w-0 flex-1 font-mono text-sm"
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+                <Button
+                  className="shrink-0 sm:px-6"
+                  onClick={() => copyLink(interviewUrl(newSession), "new")}
+                >
+                  {copyResult?.key === "new" && copyResult.ok ? (
+                    <>
+                      <Check /> Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy /> Copy link
+                    </>
+                  )}
+                </Button>
+              </div>
+              {copyResult?.key === "new" && !copyResult.ok && (
+                <Notice variant="error">
+                  Copy failed — select the link above and copy it manually
+                </Notice>
               )}
-            </Button>
-          </div>
-          {copyResult?.key === "new" && !copyResult.ok && (
-            <Notice variant="error">
-              Copy failed — select the link above and copy it manually
-            </Notice>
+            </>
           )}
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Sessions list */}
       <section className="space-y-3">
@@ -337,7 +384,7 @@ export default function AssessmentInvitePage() {
                 assessmentId={id!}
                 onCopy={(sid) => {
                   const s = sessions.find((x) => x.id === sid);
-                  if (s) copyLink(s.invite_url, sid);
+                  if (s) copyLink(interviewUrl(s), sid);
                 }}
                 copyResult={copyResult}
               />

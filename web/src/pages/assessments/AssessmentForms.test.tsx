@@ -106,13 +106,36 @@ describe("AssessmentNewPage validation", () => {
 
     await user.type(screen.getByLabelText(/Role title/), "Frontend Engineer");
     await user.click(screen.getByRole("button", { name: /Add custom skill/ }));
-    await user.click(screen.getByRole("button", { name: /Save & Create Session/ }));
+    await user.click(screen.getByRole("button", { name: "Add skill" }));
 
     expect(await screen.findByText("Skill name is required")).toBeInTheDocument();
     expect(screen.getByText("Describe what counts")).toBeInTheDocument();
     expect(screen.getByText("Describe what L1 looks like")).toBeInTheDocument();
     expect(screen.getByText("Describe what L5 looks like")).toBeInTheDocument();
     expect(assessmentsApi.create).not.toHaveBeenCalled();
+  });
+
+  it("adds a custom skill only after its modal form is saved", async () => {
+    const user = userEvent.setup();
+    renderAt("/assessments/new");
+
+    await user.click(screen.getByRole("button", { name: /Add custom skill/ }));
+    expect(screen.getByRole("dialog", { name: "Add custom skill" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByText("No skills added yet.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Add custom skill/ }));
+    await user.type(screen.getByLabelText(/^Name/), "Communication");
+    await user.type(screen.getByLabelText(/What counts/), "Explains decisions clearly");
+    for (let level = 1; level <= 5; level += 1) {
+      await user.type(screen.getByLabelText(`L${level} anchor *`), `Level ${level} behavior`);
+    }
+    await user.click(screen.getByRole("button", { name: "Add skill" }));
+
+    expect(screen.queryByRole("dialog", { name: "Add custom skill" })).not.toBeInTheDocument();
+    expect(screen.getByText("Communication")).toBeInTheDocument();
+    expect(screen.getByText("Explains decisions clearly")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Edit/ })).toBeInTheDocument();
   });
 });
 
