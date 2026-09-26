@@ -47,10 +47,10 @@ class AudioWebSocketMiddleware
   end
 
   def handle_browser_open(env, session_id, browser_ws, state)
-    session, error = authenticate_and_load(env, session_id)
+    session, error, error_code = authenticate_and_load(env, session_id)
 
     if error
-      browser_ws.send({ type: 'error', code: 'auth_failed', message: error, recoverable: false }.to_json)
+      browser_ws.send({ type: 'error', code: error_code || 'auth_failed', message: error, recoverable: false }.to_json)
       browser_ws.close
       return
     end
@@ -756,6 +756,11 @@ class AudioWebSocketMiddleware
     return [nil, 'Session not found'] unless session
     return [nil, 'Session has ended'] if session.ended?
     return [nil, 'Session ID mismatch'] if session.id.to_s != session_id
+
+    # Invite links are bearer links: only the browser that started the interview may (re)join it.
+    if invite_token.present? && !Sessions::ClientClaim.new(session).claim(request.params['client_id'])
+      return [nil, 'Interview already in progress in another browser', 'session_in_use']
+    end
 
     [session, nil]
   end
